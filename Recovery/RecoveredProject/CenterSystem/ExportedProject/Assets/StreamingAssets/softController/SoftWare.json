@@ -1,0 +1,241 @@
+{ 
+
+"GetSoftWare":[
+    { 
+    "GetName":"宣传片",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.42",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true,
+      "GetVideoList":["一路向新"]
+  
+
+},
+    { 
+    "GetName":"特效投影",
+    "GetModelName":"特效",
+    "GetPath":"",
+    "GetIP1":"192.168.86.45",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true,
+  "GetVideoList":["特效影片"]
+  
+
+},
+ { 
+    "GetName":"老领导话石特",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.55",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true
+  
+
+},
+     { 
+    "GetName":"触控一体机",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.41",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true,
+   "GetHWIP":"192.168.20.201:1001",
+  
+
+},
+    { 
+    "GetName":"门柱特效",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.45",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true
+  
+
+},
+  { 
+    "GetName":"领导关怀企业荣誉",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.1.106",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true
+  
+
+},
+ { 
+    "GetName":"板卷产品介绍",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.50",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":false
+  
+
+},
+{ 
+    "GetName":"电力角钢产品介绍",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.51",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":false
+  
+
+},
+{ 
+    "GetName":"建筑材料产品介绍",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.52",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":false
+  
+
+},
+{ 
+    "GetName":"锚杆钢产品介绍",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.53",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":false
+  
+
+},
+{ 
+    "GetName":"特种钢产品介绍",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.54",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":false
+  
+
+},
+ { 
+    "GetName":"3A沉浸式旅游参观",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.46",
+    "GetPort1":7002,
+    "GetIP2":"192.168.86.47",
+    "GetPort2":7002,
+    "ISVideo":true,
+  "GetVideoList":[]
+  
+
+},
+{ 
+    "GetName":"特钢产品应用场景",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.46",
+    "GetPort1":7002,
+    "GetIP2":"192.168.86.47",
+    "GetPort2":7002,
+    "ISVideo":true,
+ "GetVideoList":[]
+  
+
+},
+{ 
+    "GetName":"特钢是怎样炼成的",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.46",
+    "GetPort1":7002,
+    "GetIP2":"192.168.86.47",
+    "GetPort2":7002,
+    "ISVideo":true,
+ "GetVideoList":[]
+  
+
+},
+{ 
+    "GetName":"数智领航",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.56",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true
+  
+
+},
+{ 
+    "GetName":"绿色低碳",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.43",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true
+  
+
+},
+{ 
+    "GetName":"企业文化",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.57",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true
+  
+
+},
+{ 
+    "GetName":"党建工作",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.44",
+    "GetPort1":7013,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true
+  
+
+},
+{ 
+    "GetName":"拍照留言",
+    "GetModelName":"序厅",
+    "GetPath":"",
+    "GetIP1":"192.168.86.58",
+    "GetPort1":7002,
+    "GetIP2":"",
+    "GetPort2":0,
+    "ISVideo":true
+  
+
+}
+        ]
+
+
+}

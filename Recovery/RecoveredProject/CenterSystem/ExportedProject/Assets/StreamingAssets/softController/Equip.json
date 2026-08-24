@@ -1,0 +1,209 @@
+{ 
+
+"GetSoftWare":[
+    { 
+    "GetName":"序厅LED",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.42",
+    "GetPort":7002,
+     "GetCom":0
+  
+
+},
+ { 
+    "GetName":"序厅主机",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.80",
+    "GetPort":10000,
+	 "GetCom":1
+  
+
+},
+ { 
+    "GetName":"老领导话石特",
+     "GetControlWay":"红外",
+    "GetIP":"192.168.86.90",
+    "GetPort":502
+  
+
+}, 
+{ 
+    "GetName":"历史沿革LED",
+     "GetControlWay":"红外",
+    "GetIP":"192.168.86.90",
+    "GetPort":502
+  
+
+},
+{ 
+    "GetName":"历史沿革主机",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.80",
+    "GetPort":10000,
+	 "GetCom":0
+  
+
+},
+   { 
+    "GetName":"门柱LED屏",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.20.201",
+    "GetPort":7002
+  
+
+},
+ { 
+    "GetName":"门柱屏主机",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.81",
+    "GetPort":10000,
+		  "GetCom":2
+  
+
+},
+ { 
+    "GetName":"透明展柜1",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.20.201",
+    "GetPort":7002
+  
+
+},
+ { 
+    "GetName":"透明展柜2",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.20.201",
+    "GetPort":7002
+  
+
+},
+ { 
+    "GetName":"透明展柜3",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.20.201",
+    "GetPort":7002
+  
+
+},
+ { 
+    "GetName":"透明展柜4",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.20.201",
+    "GetPort":7002
+  
+
+},
+ { 
+    "GetName":"透明展柜5",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.20.201",
+    "GetPort":7002
+  
+
+},
+{ 
+    "GetName":"环幕LED",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.20.201",
+    "GetPort":7002
+  
+
+},
+{ 
+    "GetName":"环幕主机",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.81",
+    "GetPort":10000,
+		  "GetCom":1
+  
+
+},
+{ 
+    "GetName":"地幕LED",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.20.201",
+    "GetPort":7002
+  
+
+},
+{ 
+    "GetName":"地幕主机",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.81",
+    "GetPort":10000,
+		  "GetCom":0
+  
+
+},
+{ 
+    "GetName":"数智领航",
+     "GetControlWay":"红外",
+    "GetIP":"192.168.86.90",
+    "GetPort":502
+  
+
+},
+{ 
+    "GetName":"绿色低碳LED",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.80",
+    "GetPort":10000,
+	  "GetCom":2
+  
+
+},
+{ 
+    "GetName":"绿色低碳主机",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.80",
+    "GetPort":10000,
+		  "GetCom":2
+  
+
+},
+{ 
+    "GetName":"互动飞屏电视",
+     "GetControlWay":"红外",
+    "GetIP":"192.168.86.91",
+    "GetPort":502
+  
+
+},
+{ 
+    "GetName":"互动飞屏一体机",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.82",
+    "GetPort":10000,
+  "GetCom":0
+  
+
+},
+{ 
+    "GetName":"党建赋能主机",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.86.81",
+    "GetPort":10000,
+		  "GetCom":3
+  
+
+},
+{ 
+    "GetName":"党建赋能LED",
+     "GetControlWay":"继电器",
+    "GetIP":"192.168.20.201",
+    "GetPort":10000
+  
+
+},
+{ 
+    "GetName":"留言拍照",
+     "GetControlWay":"红外",
+    "GetIP":"192.168.86.90",
+    "GetPort":502
+  
+
+},
+        ]
+
+
+}

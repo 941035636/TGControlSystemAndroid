@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db46abeb9294c1f6213ab5273419e026, type: 3}
+  m_Name: Item
+  m_EditorClassIdentifier:
+  dataArray:
+  - relayname: 聚英继电器
+    ChannelNum: 8
+    ip: 10.11.22.101
+    port: 60001
+    allopen: FE 0F 00 00 00 08 01 FF F1 D1
+    allclose: FE 0F 00 00 00 08 01 00 B1 91
+    firstOpen: FE 05 00 00 FF 00 98 35
+    firstClose: FE 05 00 00 00 00 D9 C5
+    secondopen: FE 05 00 01 FF 00 C9 F5
+    secondclose: FE 05 00 01 00 00 88 05
+    thirdopen: FE 05 00 02 FF 00 39 F5
+    thirdclose: FE 05 00 02 00 00 78 05
+    forthopen: FE 05 00 03 FF 00 68 35
+    forthclose: FE 05 00 03 00 00 29 C5
+    fifthopen: FE 05 00 04 FF 00 D9 F4
+    fifthclose: FE 05 00 04 00 00 98 04
+    sixopen: FE 05 00 05 FF 00 88 34
+    sixclose: FE 05 00 05 00 00 C9 C4
+    seventhopen: FE 05 00 06 FF 00 78 34
+    seventhclose: FE 05 00 06 00 00 39 C4
+    eightopen: FE 05 00 07 FF 00 29 F4
+    eightclose: FE 05 00 07 00 00 68 04
+    ninethopen:
+    ninethclose:
+  - relayname: 万智继电器
+    ChannelNum: 8
+    ip:
+    port: 60002
+    allopen: 05 06 00 70 00 01 48 55
+    allclose: 05 06 00 70 00 00 89 95
+    firstOpen: 05 06 00 01 00 01 18 4E
+    firstClose: 05 06 00 01 00 00 D9 8E
+    secondopen: 05 06 00 02 00 01 E8 4E
+    secondclose: 05 06 00 02 00 00 29 8E
+    thirdopen: 05 06 00 03 00 01 B9 8E
+    thirdclose: 05 06 00 03 00 00 78 4E
+    forthopen: 05 06 00 04 00 01 08 4F
+    forthclose: 05 06 00 04 00 00 C9 8F
+    fifthopen: 05 06 00 05 00 01 59 8F
+    fifthclose: 05 06 00 05 00 00 98 4F
+    sixopen: 05 06 00 06 00 01 A9 8F
+    sixclose: 05 06 00 06 00 00 68 4F
+    seventhopen: 05 06 00 07 00 01 F8 4F
+    seventhclose: 05 06 00 07 00 00 39 8F
+    eightopen: 05 06 00 08 00 01 C8 4C
+    eightclose: 05 06 00 08 00 00 09 8C
+    ninethopen:
+    ninethclose:

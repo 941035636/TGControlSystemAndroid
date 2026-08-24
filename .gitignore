@@ -1,0 +1,44 @@
+# Microsoft Office temporary files
+~$*
+
+# Local installers and recovered input/tooling
+Docs/*.exe
+Recovery/Input/
+Recovery/Tools/
+Recovery/Extracted/
+Recovery/RecoveredSource/
+Recovery/RecoveredProject/*/AuxiliaryFiles/
+Recovery/Analysis/*.log
+
+# Unity generated folders
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+**/[Mm]emoryCaptures/
+**/[Rr]ecordings/
+
+# IDE and generated solution files
+**/.vs/
+**/.vscode/
+**/.idea/
+**/node_modules/
+**/*.csproj
+**/*.sln
+**/*.user
+**/*.suo
+**/*.tmp
+
+# Build and test outputs
+**/[Bb]in/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Oo]ut/
+**/[Oo]utput/
+**/TestResults/
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

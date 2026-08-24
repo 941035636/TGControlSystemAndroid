@@ -1,0 +1,78 @@
+{
+
+  "GetRelayModelList": [
+    {
+      "GetAllChannelNum": 8,
+      "Getrelaykinds": "继电器",
+      "GetChannelNum": 8,
+      "GetrelayIp": "192.168.86.80",
+      "GetRelayPort": 10000,
+      "GetrelayName": "主机",
+      "GetOrder": {
+        "Allopen": "01 0F 00 00 00 08 01 FF BE D5",
+        "Allclose": "FE 0F 00 00 00 08 01 00 B1 91",
+        "OpenArr": [ "FE 05 00 00 FF 00 98 35", "FE 05 00 01 FF 00 C9 F5", "FE 05 00 02 FF 00 39 F5", "FE 05 00 03 FF 00 68 35", "FE 05 00 04 FF 00 D9 F4", "FE 05 00 05 FF 00 88 34", "FE 05 00 06 FF 00 78 34", "FE 05 00 07 FF 00 29 F4" ],
+        "CloseArr": [ "FE 05 00 00 00 00 D9 C5", "FE 05 00 01 00 00 88 05", "FE 05 00 02 00 00 78 05", "FE 05 00 03 00 00 29 C5", "FE 05 00 04 00 00 98 04", "FE 05 00 05 00 00 C9 C4", "FE 05 00 06 00 00 39 C4", "FE 05 00 07 00 00 68 04" ]
+      }
+    },
+      {
+        "GetAllChannelNum": 1,
+        "Getrelaykinds": "继电器",
+        "GetChannelNum": 8,
+        "GetrelayIp": "192.168.86.81",
+        "GetRelayPort": 10000,
+        "GetrelayName": "主机",
+        "GetOrder": {
+          "Allopen": "01 0F 00 00 00 08 01 FF BE D5",
+          "Allclose": "FE 0F 00 00 00 08 01 00 B1 91",
+          "OpenArr": [ "FE 05 00 00 FF 00 98 35", "FE 05 00 01 FF 00 C9 F5", "FE 05 00 02 FF 00 39 F5", "FE 05 00 03 FF 00 68 35", "FE 05 00 04 FF 00 D9 F4", "FE 05 00 05 FF 00 88 34", "FE 05 00 06 FF 00 78 34", "FE 05 00 07 FF 00 29 F4" ],
+          "CloseArr": [ "FE 05 00 00 00 00 D9 C5", "FE 05 00 01 00 00 88 05", "FE 05 00 02 00 00 78 05", "FE 05 00 03 00 00 29 C5", "FE 05 00 04 00 00 98 04", "FE 05 00 05 00 00 C9 C4", "FE 05 00 06 00 00 39 C4", "FE 05 00 07 00 00 68 04" ]
+        }
+      },
+      {
+        "GetAllChannelNum": 16,
+        "Getrelaykinds": "继电器",
+        "GetChannelNum": 16,
+        "GetrelayIp": "192.168.86.85",
+        "GetRelayPort": 10000,
+        "GetrelayName": "",
+        "GetOrder": {
+          "Allopen": "01 0F 00 00 00 08 01 FF BE D5",
+          "Allclose": "FE 0F 00 00 00 08 01 00 B1 91",
+          "OpenArr": [ "FE 05 00 00 FF 00 98 35", "FE 05 00 01 FF 00 C9 F5", "FE 05 00 02 FF 00 39 F5", "FE 05 00 03 FF 00 68 35", "FE 05 00 04 FF 00 D9 F4", "FE 05 00 05 FF 00 88 34", "FE 05 00 06 FF 00 78 34", "FE 05 00 07 FF 00 29 F4", "FE 05 00 08 FF0019F7", "FE050009FF004837", "FE05000AFF00B837", "FE05000BFF00E9F7", "FE05000CFF005836", "FE05000DFF0009F6", "FE05000EFF00F9F6", "FE05000FFF00A836" ],
+          "CloseArr": [ "FE 05 00 00 00 00 D9 C5", "FE 05 00 01 00 00 88 05", "FE 05 00 02 00 00 78 05", "FE 05 00 03 00 00 29 C5", "FE 05 00 04 00 00 98 04", "FE 05 00 05 00 00 C9 C4", "FE 05 00 06 00 00 39 C4", "FE 05 00 07 00 00 68 04", "FE05000800005807", "FE050009000009C7", "FE05000A0000F9C7", "FE05000B0000A807", "FE05000C000019C6", "FE05000D00004806", "FE05000E0000B806", "FE05000F0000E9C6" ]
+        }
+      },
+      {
+        "GetAllChannelNum": 16,
+        "Getrelaykinds": "继电器",
+        "GetChannelNum": 16,
+        "GetrelayIp": "192.168.86.86",
+        "GetRelayPort": 10000,
+        "GetrelayName": "",
+        "GetOrder": {
+          "Allopen": "01 0F 00 00 00 08 01 FF BE D5",
+          "Allclose": "FE 0F 00 00 00 08 01 00 B1 91",
+          "OpenArr": [ "FE 05 00 00 FF 00 98 35", "FE 05 00 01 FF 00 C9 F5", "FE 05 00 02 FF 00 39 F5", "FE 05 00 03 FF 00 68 35", "FE 05 00 04 FF 00 D9 F4", "FE 05 00 05 FF 00 88 34", "FE 05 00 06 FF 00 78 34", "FE 05 00 07 FF 00 29 F4", "FE 05 00 08 FF0019F7", "FE050009FF004837", "FE05000AFF00B837", "FE05000BFF00E9F7", "FE05000CFF005836", "FE05000DFF0009F6", "FE05000EFF00F9F6", "FE05000FFF00A836" ],
+          "CloseArr": [ "FE 05 00 00 00 00 D9 C5", "FE 05 00 01 00 00 88 05", "FE 05 00 02 00 00 78 05", "FE 05 00 03 00 00 29 C5", "FE 05 00 04 00 00 98 04", "FE 05 00 05 00 00 C9 C4", "FE 05 00 06 00 00 39 C4", "FE 05 00 07 00 00 68 04", "FE05000800005807", "FE050009000009C7", "FE05000A0000F9C7", "FE05000B0000A807", "FE05000C000019C6", "FE05000D00004806", "FE05000E0000B806", "FE05000F0000E9C6" ]
+        }
+      },
+      {
+        "GetAllChannelNum": 1,
+        "Getrelaykinds": "继电器",
+        "GetChannelNum": 1,
+        "GetrelayIp": "192.168.86.82",
+        "GetRelayPort": 10000,
+        "GetrelayName": "飞屏主机",
+        "GetOrder": {
+          "Allopen": "01 0F 00 00 00 08 01 FF BE D5",
+          "Allclose": "FE 0F 00 00 00 08 01 00 B1 91",
+          "OpenArr": [ "FE 10 00 03 00 02 04 00 04 00 0A 41 6B" ],
+          "CloseArr": [ "FE 10 00 03 00 02 04 00 04 00 0A 41 6B"]
+        }
+      }
+    
+  ]
+
+
+}
