@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.IO;
 using System.Text;
 using TG.Control.UnityContracts;
 using UnityEngine;
@@ -31,12 +32,38 @@ namespace TG.Control.LedPlayer
         private Coroutine contentSyncCoroutine;
         private bool playbackPriorityActive;
         private string contentStatus = "LED正在检查内容版本";
+        private FileStream singleInstanceLock;
 
         public string ClientId => clientId;
         public bool IsConnected => connected;
         public bool IsSyncing => syncing;
         public long SyncedContentVersion => syncedContentVersion;
         private string BaseUrl => serverBaseUrl.TrimEnd('/');
+
+        private void Awake()
+        {
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+            try
+            {
+                var lockPath = Path.Combine(Path.GetTempPath(), "TGExhibitionLedPlayer.lock");
+                singleInstanceLock = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite,
+                    FileShare.None, 1, FileOptions.DeleteOnClose);
+            }
+            catch (IOException)
+            {
+                Debug.LogError("检测到展厅播放端已经运行，本实例将退出，避免准备和播放指令被两个进程拆分处理。");
+                enabled = false;
+                Application.Quit(21);
+                return;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError("播放端单实例检查失败：" + exception.Message);
+            }
+#endif
+            Debug.Log($"[LED Client] 启动实例：clientId={clientId}，instanceId={instanceId}，" +
+                      $"processId={System.Diagnostics.Process.GetCurrentProcess().Id}。");
+        }
 
         private void OnEnable()
         {
@@ -54,6 +81,12 @@ namespace TG.Control.LedPlayer
             if (contentSyncCoroutine != null) StopCoroutine(contentSyncCoroutine);
             contentSyncCoroutine = null;
             syncing = false;
+        }
+
+        private void OnDestroy()
+        {
+            singleInstanceLock?.Dispose();
+            singleInstanceLock = null;
         }
 
         public void BeginPlaybackPriority()

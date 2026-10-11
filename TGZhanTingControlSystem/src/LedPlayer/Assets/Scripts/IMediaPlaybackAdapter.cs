@@ -24,6 +24,7 @@ namespace TG.Control.LedPlayer
     public interface IVideoPlaybackDiagnostics
     {
         bool HasRenderableVideoFrame { get; }
+        long RenderedVideoFrameCount { get; }
         string PlaybackBackend { get; }
     }
 }

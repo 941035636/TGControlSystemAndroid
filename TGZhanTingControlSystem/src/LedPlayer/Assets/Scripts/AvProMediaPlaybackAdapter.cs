@@ -25,6 +25,9 @@ namespace TG.Control.LedPlayer
                                                mediaPlayer.TextureProducer != null &&
                                                mediaPlayer.TextureProducer.GetTextureFrameCount() > 0 &&
                                                mediaPlayer.TextureProducer.GetTexture() != null;
+        public long RenderedVideoFrameCount => mediaPlayer != null && mediaPlayer.TextureProducer != null
+            ? mediaPlayer.TextureProducer.GetTextureFrameCount()
+            : 0L;
         public string PlaybackBackend => mediaPlayer != null && mediaPlayer.Info != null
             ? mediaPlayer.Info.GetPlayerDescription()
             : string.Empty;
@@ -79,6 +82,7 @@ namespace TG.Control.LedPlayer
 
                 if (mediaPlayer.Control != null && mediaPlayer.Control.CanPlay())
                 {
+                    Debug.Log($"[LED Player] AVPro媒体准备就绪，帧基线={RenderedVideoFrameCount}，后端={PlaybackBackend}。");
                     completed(true, null);
                     yield break;
                 }

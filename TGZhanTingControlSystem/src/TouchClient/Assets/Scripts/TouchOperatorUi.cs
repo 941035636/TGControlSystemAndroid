@@ -225,7 +225,7 @@ namespace TG.Control.Touch
             routeEditorPage.ModuleMoveRequested += MoveSelection;
             routeEditorPage.ModuleRemoveRequested += RemoveSelection;
             editorPage = routeEditorPage.Root.gameObject;
-            playbackPageView = new PlaybackPage(uiFactory, theme, body);
+            playbackPageView = new PlaybackPage(uiFactory, theme, imageLoader, body);
             playbackPageView.PauseRequested += PausePlayback;
             playbackPageView.ResumeRequested += ResumePlayback;
             playbackPageView.RetryRequested += RetryPlayback;
@@ -323,9 +323,11 @@ namespace TG.Control.Touch
         private void OnSessionChanged(PlaybackSessionStatus value)
         {
             startRequestPending = false;
+            var restoringIntoHiddenShell = value != null && appShell != null && !appShell.Visible;
             if (value != null)
             {
                 welcomeExperiencePage?.Hide();
+                appShell?.SetVisible(true);
                 lastInteractionAt = Time.realtimeSinceStartup;
             }
             var sameSession = value != null && string.Equals(playbackDisplay.SessionId, value.sessionId,
@@ -333,10 +335,12 @@ namespace TG.Control.Touch
             if (!sameSession) confirmStop = false;
             if (value != null) playbackDisplay.Bind(value.sessionId);
             else playbackDisplay.Clear();
-            if (value != null && navigateToPlaybackWhenSessionArrives)
+            if (value != null && (navigateToPlaybackWhenSessionArrives || restoringIntoHiddenShell))
             {
                 navigateToPlaybackWhenSessionArrives = false;
                 ShowPage(PageState.Playback);
+                if (restoringIntoHiddenShell)
+                    Debug.Log("已恢复活动讲解并显示当前讲解页面。");
             }
             else if (value == null && pageState == PageState.Playback) ShowPage(PageState.Home);
             Refresh();
@@ -385,6 +389,13 @@ namespace TG.Control.Touch
 
         private void NewTemporaryRoute()
         {
+            if (!TouchFeatureFlags.EnableThemeCombinationUi)
+            {
+                status = "主题组合功能暂未开放。";
+                ShowPage(PageState.Home);
+                Refresh();
+                return;
+            }
             routeDraft.BeginTemporary();
             status = "临时组合：请按讲解顺序选择主题，也可以保存为常用路线。";
             Refresh();
@@ -393,6 +404,13 @@ namespace TG.Control.Touch
 
         private void EditRoute(NarrationRoute route)
         {
+            if (!TouchFeatureFlags.EnableCustomRouteUi)
+            {
+                status = "讲解路线功能暂未开放。";
+                ShowPage(PageState.Home);
+                Refresh();
+                return;
+            }
             LoadRoute(route);
             ShowPage(PageState.RouteEditor);
         }
@@ -609,6 +627,11 @@ namespace TG.Control.Touch
 
         private void ShowPage(PageState state)
         {
+            if (state == PageState.RouteEditor &&
+                (routeDraft.IsTemporary
+                    ? !TouchFeatureFlags.EnableThemeCombinationUi
+                    : !TouchFeatureFlags.EnableCustomRouteUi))
+                state = PageState.Home;
             var changed = pageState != state;
             pageState = state;
             if (homePage != null) homePage.SetActive(state == PageState.Home && useModuleKiosk);
@@ -619,7 +642,10 @@ namespace TG.Control.Touch
             if (state != PageState.Playback) confirmStop = false;
             if (appShell != null)
             {
-                appShell.SetHomeDarkMode(state == PageState.Home && useModuleKiosk);
+                var isKioskHome = state == PageState.Home && useModuleKiosk;
+                appShell.SetHomeDarkMode(isKioskHome || state == PageState.Playback ||
+                                         state == PageState.SystemStatus, isKioskHome,
+                                         state == PageState.Playback);
                 var section = state == PageState.Playback ? TouchShellSection.Playback
                     : state == PageState.RouteEditor
                         ? (routeDraft.IsTemporary ? TouchShellSection.Combination : TouchShellSection.Routes)
@@ -632,6 +658,14 @@ namespace TG.Control.Touch
 
         private void OnShellNavigationRequested(TouchShellSection section)
         {
+            if ((section == TouchShellSection.Routes && !TouchFeatureFlags.EnableCustomRouteUi) ||
+                (section == TouchShellSection.Combination && !TouchFeatureFlags.EnableThemeCombinationUi))
+            {
+                status = "该功能暂未开放。";
+                ShowPage(PageState.Home);
+                Refresh();
+                return;
+            }
             if (section == TouchShellSection.Playback)
             {
                 if (facade.HasActiveSession) ShowPage(PageState.Playback);
@@ -709,7 +743,7 @@ namespace TG.Control.Touch
             if (presenter != null) moduleKioskPage?.Render(presenter.State, presenter.NormalizeAssetUrl);
             if (presenter != null) routeEditorPage?.Render(presenter.State, routeDraft, status, presenter.NormalizeAssetUrl);
             if (presenter != null) playbackPageView?.Render(presenter.State, playbackDisplay.RouteName,
-                playbackDisplay.ModuleIds, confirmStop);
+                playbackDisplay.ModuleIds, confirmStop, presenter.NormalizeAssetUrl);
             if (presenter != null) systemStatusPageView?.Render(presenter.State, playbackDisplay.RouteName);
         }
 
@@ -731,8 +765,8 @@ namespace TG.Control.Touch
             }
             ApplyShellBackground(config);
             var layout = config.layout;
-            useModuleKiosk = layout == null || string.Equals(layout.touchTemplate, "module-kiosk",
-                StringComparison.OrdinalIgnoreCase);
+            useModuleKiosk = !TouchFeatureFlags.EnableRouteBasedHomeUi || layout == null ||
+                string.Equals(layout.touchTemplate, "module-kiosk", StringComparison.OrdinalIgnoreCase);
             welcomeEnabled = layout == null || layout.touchWelcomeEnabled;
             idleTimeoutSeconds = Mathf.Clamp(layout?.touchIdleTimeoutSeconds ?? 180, 30, 3600);
             welcomeExperiencePage?.Configure(config, presenter == null ? (Func<string, string>)null : presenter.NormalizeAssetUrl);
@@ -747,8 +781,8 @@ namespace TG.Control.Touch
 
         private void ApplyShellBackground(UiExperienceConfig config)
         {
-            var isKiosk = config.layout == null || string.Equals(config.layout.touchTemplate,
-                "module-kiosk", StringComparison.OrdinalIgnoreCase);
+            var isKiosk = !TouchFeatureFlags.EnableRouteBasedHomeUi || config.layout == null ||
+                string.Equals(config.layout.touchTemplate, "module-kiosk", StringComparison.OrdinalIgnoreCase);
             var fallbackColor = !isKiosk &&
                 ColorUtility.TryParseHtmlString(config.touchBackgroundColor, out var configured)
                 ? configured : theme.Background;

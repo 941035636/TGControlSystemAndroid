@@ -25,6 +25,24 @@ public sealed class AssetStorage
     public string MediaDirectory { get; }
     public IFileProvider FileProvider { get; }
 
+    /// <summary>
+    /// Converts a migrated absolute /media URL back to the portable relative form,
+    /// but only when the referenced file really exists in this server's media store.
+    /// Integrity is still checked by ValidatePublishedReference afterwards.
+    /// </summary>
+    public string? NormalizeLocalReference(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri)) return url;
+        if (uri.Scheme is not ("http" or "https")) return url;
+        const string mediaPrefix = "/media/";
+        if (!uri.AbsolutePath.StartsWith(mediaPrefix, StringComparison.OrdinalIgnoreCase)) return url;
+        var storedName = Uri.UnescapeDataString(uri.AbsolutePath[mediaPrefix.Length..]);
+        if (string.IsNullOrWhiteSpace(storedName) ||
+            !string.Equals(storedName, Path.GetFileName(storedName), StringComparison.Ordinal) ||
+            !File.Exists(Path.Combine(MediaDirectory, storedName))) return url;
+        return $"{mediaPrefix}{Uri.EscapeDataString(storedName)}";
+    }
+
     public string? ValidatePublishedReference(string url, long expectedSize, HostString requestHost,
         string? expectedSha256 = null)
     {

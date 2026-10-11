@@ -67,7 +67,9 @@ const friendlyApiError = (code: string | null, fallback: string): string => {
     asset_is_referenced: '该素材仍被草稿、正式版本、历史版本或候选语音引用，不能删除。',
   }
   if (code && messages[code]) return messages[code]
-  if (/[\u3400-\u9fff]/.test(fallback) && !/[A-Za-z]/.test(fallback)) return fallback
+  // Validation messages can legitimately contain terms such as SHA-256, HTTP
+  // and AssetId. Keep the actionable Chinese message instead of masking it.
+  if (/[\u3400-\u9fff]/.test(fallback)) return fallback
   return '操作未完成，请检查管理服务状态后重试。'
 }
 

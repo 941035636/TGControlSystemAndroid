@@ -175,7 +175,7 @@ if ($firstInstall) {
         Urls = "$($serverUri.Scheme)://0.0.0.0:$serverPort"
         Storage = @{ DataDirectory = (Join-Path $data 'Data') }
         Playback = @{
-            TouchClientId = 'touch-main'; LedClientId = 'led-main'; PrepareLeadMilliseconds = 1500
+            TouchClientId = 'touch-main'; LedClientId = 'led-main'; PrepareLeadMilliseconds = 250
             SyncToleranceMilliseconds = 500; LongPollSeconds = 20; RequireLedReadyBeforeStart = $true
             AllowDegradedPlayback = $true
         }

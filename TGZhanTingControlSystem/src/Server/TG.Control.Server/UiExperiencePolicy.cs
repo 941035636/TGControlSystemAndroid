@@ -53,6 +53,17 @@ public static class UiExperiencePolicy
         var errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
         ValidateElements(config.TouchElements, TouchKeys, "touchElements", errors);
         ValidateElements(config.LedElements, LedKeys, "ledElements", errors);
+        var welcomeAudio = config.TouchElements?.LastOrDefault(item =>
+            item is not null && string.Equals(item.Key, "welcome.audio", StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(welcomeAudio?.AssetUrl))
+        {
+            var extension = Path.GetExtension(welcomeAudio.AssetUrl.Split('?', '#')[0]);
+            var supportedExtension = extension.Equals(".mp3", StringComparison.OrdinalIgnoreCase) ||
+                                     extension.Equals(".wav", StringComparison.OrdinalIgnoreCase);
+            var supportedMediaType = welcomeAudio.AssetMediaType?.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) == true;
+            if (!supportedExtension || !supportedMediaType)
+                errors["touchElements.welcome.audio.format"] = ["欢迎词仅支持可由LED播放端稳定解码的MP3或WAV格式，请重新上传。"];
+        }
         var captions = config.Welcome?.Captions;
         if (captions is not null)
         {

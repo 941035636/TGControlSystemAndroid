@@ -17,7 +17,7 @@ namespace TG.Control.Touch.UI.Pages
     /// </summary>
     public sealed class ModuleKioskHomePage
     {
-        private static readonly Dictionary<int, Sprite> PreviewComposites = new Dictionary<int, Sprite>();
+        private static readonly Dictionary<int, Sprite> OfficialArtwork = new Dictionary<int, Sprite>();
         private static Sprite bottomShadeSprite;
 
         private sealed class ModuleCard
@@ -31,7 +31,7 @@ namespace TG.Control.Touch.UI.Pages
             public Text DataTitle;
             public GameObject SelectedBadge;
             public Text SelectedOrder;
-            public bool UsesReferenceComposite;
+            public Outline SelectionGlow;
         }
 
         private readonly TouchUiFactory factory;
@@ -76,7 +76,7 @@ namespace TG.Control.Touch.UI.Pages
             BuildHeader();
 
             var gallery = factory.Image("Module Photography Gallery", root, Color.clear);
-            TouchUiFactory.Anchor(gallery.rectTransform, 0, 0, 1, 1, 0, 126, 0, -126);
+            TouchUiFactory.Anchor(gallery.rectTransform, 0, 0, 1, 1, 0, 120, 0, -138);
             grid = factory.ScrollGrid(gallery.transform, "Module Photography Grid", 4,
                 new Vector2(theme.ModuleGridCellSize.x, theme.ModuleGridCellSize.y),
                 new Vector2(theme.Space12, theme.Space12));
@@ -105,11 +105,9 @@ namespace TG.Control.Touch.UI.Pages
             var actionBarBorder = factory.RoundedImage("Home Selection Bar Border", root,
                 theme.HomeDarkBorder);
             TouchUiFactory.Anchor(actionBarBorder.rectTransform, 0, 0, 1, 0, 0, 0, 0, 108);
-            HomeDarkVisualAssets.ApplySliced(actionBarBorder, HomeDarkVisualAssets.BottomGlass,
-                theme.HomeGlassBottomTint);
             actionBarBorder.raycastTarget = false;
             var actionBar = factory.RoundedImage("Home Selection Bar", actionBarBorder.transform,
-                Color.clear);
+                theme.HomeHallActionSurface);
             TouchUiFactory.Stretch(actionBar.rectTransform, 1, 1, -1, -1);
             actionBar.raycastTarget = false;
 
@@ -155,7 +153,7 @@ namespace TG.Control.Touch.UI.Pages
                 -258, -38, -18, 38);
             var startOutline = startButton.gameObject.AddComponent<Outline>();
             startOutline.effectColor = new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g,
-                theme.HomeDarkAccent.b, .62f);
+                theme.HomeDarkAccent.b, .36f);
             startOutline.effectDistance = new Vector2(2, -2);
         }
 
@@ -194,11 +192,9 @@ namespace TG.Control.Touch.UI.Pages
             var headerBorder = factory.RoundedImage("Home Header Panel Border", root,
                 theme.HomeDarkBorderSoft);
             TouchUiFactory.Anchor(headerBorder.rectTransform, 0, 1, 1, 1, 0, -126, 0, 0);
-            HomeDarkVisualAssets.ApplySliced(headerBorder, HomeDarkVisualAssets.TitleGlass,
-                theme.HomeGlassTitleTint);
             headerBorder.raycastTarget = false;
             var headerSurface = factory.RoundedImage("Home Header Panel Surface", headerBorder.transform,
-                Color.clear);
+                theme.HomeHallPanelSurface);
             TouchUiFactory.Stretch(headerSurface.rectTransform, 1, 1, -1, -1);
             headerSurface.raycastTarget = false;
 
@@ -228,7 +224,7 @@ namespace TG.Control.Touch.UI.Pages
             // under the top bar and navigation. Keep the local veil almost transparent: the authored
             // glass panels provide readability while the dome, windows and floor remain visible.
             var atmosphere = factory.Image("Home Content Atmosphere", root,
-                new Color(.004f, .028f, .085f, .04f));
+                new Color(.004f, .028f, .085f, .02f));
             TouchUiFactory.Stretch(atmosphere.rectTransform);
             atmosphere.raycastTarget = false;
             atmosphere.transform.SetAsFirstSibling();
@@ -286,9 +282,14 @@ namespace TG.Control.Touch.UI.Pages
                 TouchUiFactory.Stretch(shade.rectTransform);
                 shade.raycastTarget = false;
 
-                var dataIndex = factory.Label("Module Data Order", frame.transform, displayOrder.ToString("00"),
-                    theme.SectionTitle, FontStyle.Normal, Color.white, TextAnchor.MiddleLeft);
-                TouchUiFactory.Anchor(dataIndex.rectTransform, 0, 1, 0, 1, 22, -50, 92, -12);
+                var dataIndexBadge = factory.RoundedImage("Module Data Order Badge", frame.transform,
+                    new Color(.015f, .055f, .14f, .78f));
+                TouchUiFactory.Anchor(dataIndexBadge.rectTransform, 0, 1, 0, 1, 16, -60, 76, -14);
+                dataIndexBadge.raycastTarget = false;
+                var dataIndex = factory.Label("Module Data Order", dataIndexBadge.transform,
+                    displayOrder.ToString("00"), theme.SectionTitle, FontStyle.Bold, Color.white,
+                    TextAnchor.MiddleCenter);
+                TouchUiFactory.Stretch(dataIndex.rectTransform);
                 AddShadow(dataIndex, new Color(0, 0, 0, .5f));
                 var dataTitle = factory.Label("Module Data Title", frame.transform, module.name, theme.CardTitle,
                     FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
@@ -306,6 +307,12 @@ namespace TG.Control.Touch.UI.Pages
                     21, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
                 TouchUiFactory.Stretch(selectedOrder.rectTransform);
                 selectedBadge.gameObject.SetActive(false);
+                var selectionGlow = border.gameObject.AddComponent<Outline>();
+                selectionGlow.effectColor = new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g,
+                    theme.HomeDarkAccent.b, .42f);
+                selectionGlow.effectDistance = new Vector2(2, -2);
+                selectionGlow.useGraphicAlpha = false;
+                selectionGlow.enabled = false;
 
                 var button = border.gameObject.AddComponent<Button>();
                 button.targetGraphic = border;
@@ -330,7 +337,8 @@ namespace TG.Control.Touch.UI.Pages
                     DataIndex = dataIndex,
                     DataTitle = dataTitle,
                     SelectedBadge = selectedBadge.gameObject,
-                    SelectedOrder = selectedOrder
+                    SelectedOrder = selectedOrder,
+                    SelectionGlow = selectionGlow
                 };
                 cards.Add(card);
                 LoadVisual(card, displayOrder, crop);
@@ -342,16 +350,16 @@ namespace TG.Control.Touch.UI.Pages
 
         private void LoadVisual(ModuleCard card, int displayOrder, AspectRatioFitter crop)
         {
-            var preview = LoadPreviewComposite(displayOrder);
-            if (preview != null)
+            var official = LoadOfficialArtwork(displayOrder);
+            if (official != null)
             {
-                card.UsesReferenceComposite = true;
-                card.Cover.sprite = preview;
+                card.Cover.sprite = official;
                 card.Cover.color = Color.white;
-                crop.aspectRatio = preview.rect.width / preview.rect.height;
+                crop.aspectRatio = 1024f / 544f;
                 card.Placeholder.gameObject.SetActive(false);
-                // The temporary extracted card already contains its number, title, subtitle and arrow.
-                card.DataIndex.gameObject.SetActive(false);
+                // Official client artwork already contains the Chinese module title. Keep only
+                // the independently rendered order and selection state above the source image.
+                card.DataIndex.gameObject.SetActive(true);
                 card.DataTitle.gameObject.SetActive(false);
                 card.Shade.gameObject.SetActive(false);
                 return;
@@ -371,18 +379,16 @@ namespace TG.Control.Touch.UI.Pages
             });
         }
 
-        private static Sprite LoadPreviewComposite(int displayOrder)
+        private static Sprite LoadOfficialArtwork(int displayOrder)
         {
             if (displayOrder < 1 || displayOrder > 12) return null;
             Sprite cached;
-            if (PreviewComposites.TryGetValue(displayOrder, out cached)) return cached;
-            var resourcePath = "TGExhibitionUI/ModuleCards/Module_" + displayOrder.ToString("00") + "_Composite";
-            var texture = Resources.Load<Texture2D>(resourcePath);
-            if (texture == null) return null;
-            var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(.5f, .5f));
-            sprite.name = "Temporary Reference Card " + displayOrder.ToString("00");
-            sprite.hideFlags = HideFlags.HideAndDontSave;
-            PreviewComposites[displayOrder] = sprite;
+            if (OfficialArtwork.TryGetValue(displayOrder, out cached)) return cached;
+            var resourcePath = "TGExhibitionUI/OfficialModuleCards/Module_" +
+                               displayOrder.ToString("00") + "_Official";
+            var sprite = Resources.Load<Sprite>(resourcePath);
+            if (sprite == null) return null;
+            OfficialArtwork[displayOrder] = sprite;
             return sprite;
         }
 
@@ -409,9 +415,12 @@ namespace TG.Control.Touch.UI.Pages
                 var selectedIndex = selected.FindIndex(module => string.Equals(module.id, card.Module.id,
                     StringComparison.OrdinalIgnoreCase));
                 var isSelected = selectedIndex >= 0;
-                card.Border.color = isSelected ? theme.HomeDarkAccent : theme.HomeDarkBorderSoft;
+                card.Border.color = isSelected
+                    ? new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g, theme.HomeDarkAccent.b, .94f)
+                    : theme.HomeDarkBorderSoft;
                 card.SelectedBadge.SetActive(isSelected);
                 card.SelectedOrder.text = isSelected ? (selectedIndex + 1).ToString("00") : string.Empty;
+                card.SelectionGlow.enabled = isSelected;
             }
             selectionTitle.text = selected.Count == 0 ? "请选择展区" : "已选择 " + selected.Count + " 个展区";
             selectionDetail.text = selected.Count == 0
@@ -491,7 +500,8 @@ namespace TG.Control.Touch.UI.Pages
             var label = button.GetComponentInChildren<Text>();
             if (label != null) label.color = theme.HomeDarkTextPrimary;
             var border = button.gameObject.AddComponent<Outline>();
-            border.effectColor = theme.HomeDarkBorderSoft;
+            border.effectColor = new Color(theme.HomeDarkBorderSoft.r, theme.HomeDarkBorderSoft.g,
+                theme.HomeDarkBorderSoft.b, .28f);
             border.effectDistance = new Vector2(1, -1);
         }
 

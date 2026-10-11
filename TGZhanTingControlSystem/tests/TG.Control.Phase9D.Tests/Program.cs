@@ -49,7 +49,9 @@ internal static class Program
             ("Rollback requires current revision", RollbackRevisionConflictRejected),
             ("Legacy UI layout migrates to welcome kiosk", LegacyUiLayoutMigratesToWelcomeKiosk),
             ("Explicit new UI layout preserves operator choice", ExplicitUiLayoutPreservesChoice),
-            ("Welcome experience elements are accepted", WelcomeExperienceElementsAreAccepted)
+            ("Welcome experience elements are accepted", WelcomeExperienceElementsAreAccepted),
+            ("Welcome audio only accepts stable LED formats", WelcomeAudioFormatsAreValidated),
+            ("Migrated absolute media URL becomes portable", MigratedMediaUrlBecomesPortable)
         };
 
         var failed = 0;
@@ -487,6 +489,39 @@ internal static class Program
         var normalized = UiExperiencePolicy.Normalize(config);
         Equal(5, normalized.TouchElements!.Count);
         return Task.CompletedTask;
+    }
+
+    private static Task WelcomeAudioFormatsAreValidated()
+    {
+        var valid = UiConfig(new UiExperienceLayout(),
+        [
+            new UiElementOverride("welcome.audio", AssetUrl: "/media/welcome.mp3", AssetId: "audio-1",
+                AssetSha256: new string('c', 64), AssetSizeBytes: 4096, AssetMediaType: "audio/mpeg")
+        ]);
+        Equal(0, UiExperiencePolicy.Validate(valid).Count);
+
+        var unsupported = valid with
+        {
+            TouchElements =
+            [
+                new UiElementOverride("welcome.audio", AssetUrl: "/media/welcome.m4a", AssetId: "audio-2",
+                    AssetSha256: new string('d', 64), AssetSizeBytes: 4096, AssetMediaType: "audio/mp4")
+            ]
+        };
+        True(UiExperiencePolicy.Validate(unsupported).ContainsKey("touchElements.welcome.audio.format"),
+            "Unsupported welcome audio format was accepted.");
+        return Task.CompletedTask;
+    }
+
+    private static async Task MigratedMediaUrlBecomesPortable()
+    {
+        await using var context = await TestContext.CreateAsync();
+        var storedName = "migrated-welcome.mp3";
+        await File.WriteAllBytesAsync(Path.Combine(context.Assets.MediaDirectory, storedName), [1, 2, 3]);
+        Equal($"/media/{storedName}",
+            context.Assets.NormalizeLocalReference($"https://192.168.1.100:5443/media/{storedName}"));
+        Equal("https://old-server:5443/media/missing.mp3",
+            context.Assets.NormalizeLocalReference("https://old-server:5443/media/missing.mp3"));
     }
 
     private static UiExperienceConfig UiConfig(UiExperienceLayout layout, UiElementOverride[] elements) =>

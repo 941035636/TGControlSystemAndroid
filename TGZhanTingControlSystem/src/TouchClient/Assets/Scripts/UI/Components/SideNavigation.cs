@@ -8,7 +8,7 @@ namespace TG.Control.Touch.UI.Components
 {
     public enum TouchShellSection { ReceptionHome, Routes, Combination, Playback, SystemStatus }
 
-    /// <summary>Navigation for the five capabilities that actually exist in TouchClient V1.</summary>
+    /// <summary>Navigation for the currently enabled TouchClient capabilities.</summary>
     public sealed class SideNavigation
     {
         private sealed class Item
@@ -52,8 +52,11 @@ namespace TG.Control.Touch.UI.Components
             CreateItem(factory, TouchShellSection.ReceptionHome, "讲解首页", "home", 0);
             CreateItem(factory, TouchShellSection.Playback, "当前讲解", "microphone", 1);
             CreateItem(factory, TouchShellSection.SystemStatus, "系统状态", "activity", 2);
-            CreateItem(factory, TouchShellSection.Routes, "讲解路线", "route", 3);
-            CreateItem(factory, TouchShellSection.Combination, "主题组合", "layers", 4);
+            var optionalIndex = 3;
+            if (TouchFeatureFlags.EnableCustomRouteUi)
+                CreateItem(factory, TouchShellSection.Routes, "讲解路线", "route", optionalIndex++);
+            if (TouchFeatureFlags.EnableThemeCombinationUi)
+                CreateItem(factory, TouchShellSection.Combination, "主题组合", "layers", optionalIndex);
 
             SetActive(TouchShellSection.ReceptionHome);
             SetPlaybackAvailable(false);
@@ -158,13 +161,13 @@ namespace TG.Control.Touch.UI.Components
             var colors = item.Button.colors;
             if (homeDarkMode)
             {
-                colors.normalColor = selected ? new Color(.025f, .32f, .72f, .88f) : Color.clear;
+                colors.normalColor = selected ? new Color(.025f, .25f, .58f, .66f) : Color.clear;
                 colors.highlightedColor = selected
-                    ? new Color(.035f, .40f, .88f, .94f)
-                    : new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g, theme.HomeDarkAccent.b, .16f);
+                    ? new Color(.035f, .34f, .76f, .78f)
+                    : new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g, theme.HomeDarkAccent.b, .12f);
                 colors.pressedColor = selected
-                    ? new Color(.02f, .25f, .62f, 1f)
-                    : new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g, theme.HomeDarkAccent.b, .28f);
+                    ? new Color(.02f, .23f, .56f, .88f)
+                    : new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g, theme.HomeDarkAccent.b, .22f);
                 colors.disabledColor = new Color(.08f, .13f, .22f, .42f);
             }
             else

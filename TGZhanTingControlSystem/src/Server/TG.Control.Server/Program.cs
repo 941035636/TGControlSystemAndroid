@@ -105,6 +105,15 @@ app.MapPost("/api/ui/publish", async (HttpRequest request, UiExperienceConfig co
 {
     if (!sessions.TryAuthorize(request, AdminRoles.Publisher, out var principal, out var authenticated)) return AuthenticationFailure(authenticated);
     var username = principal.Username;
+    config = config with
+    {
+        TouchBackgroundUrl = assetStorage.NormalizeLocalReference(config.TouchBackgroundUrl),
+        LedIdleMediaUrl = assetStorage.NormalizeLocalReference(config.LedIdleMediaUrl),
+        TouchElements = config.TouchElements?.Select(element => element with
+            { AssetUrl = assetStorage.NormalizeLocalReference(element.AssetUrl) }).ToArray(),
+        LedElements = config.LedElements?.Select(element => element with
+            { AssetUrl = assetStorage.NormalizeLocalReference(element.AssetUrl) }).ToArray()
+    };
     var validation = new Dictionary<string, string[]>();
     foreach (var pair in UiExperiencePolicy.Validate(config)) validation[pair.Key] = pair.Value;
     var touchError = string.IsNullOrWhiteSpace(config.TouchBackgroundUrl)

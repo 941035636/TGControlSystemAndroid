@@ -51,18 +51,39 @@ namespace TG.Control.Touch.UI.Theme
         // Phase UI-11 home-only dark visual mode. These tokens do not replace the light product
         // system used by RouteEditor, Playback and SystemStatus.
         public Color HomeDarkBackground { get; } = ParseColor("#03132B");
-        public Color HomeDarkHeader { get; } = new Color(.018f, .075f, .16f, .90f);
-        public Color HomeDarkNavigation { get; } = new Color(.015f, .070f, .15f, .88f);
-        public Color HomeDarkSurface { get; } = new Color(.018f, .095f, .21f, .74f);
-        public Color HomeDarkSurfaceElevated { get; } = new Color(.025f, .12f, .27f, .88f);
-        public Color HomeDarkGlass { get; } = new Color(.025f, .13f, .29f, .76f);
-        public Color HomeDarkBorder { get; } = new Color(.08f, .55f, 1f, .72f);
-        public Color HomeDarkBorderSoft { get; } = new Color(.22f, .64f, 1f, .46f);
+        public Color HomeDarkHeader { get; } = new Color(.008f, .04f, .105f, .84f);
+        public Color HomeDarkNavigation { get; } = new Color(.008f, .045f, .11f, .82f);
+        public Color HomeDarkSurface { get; } = new Color(.012f, .055f, .135f, .76f);
+        public Color HomeDarkSurfaceElevated { get; } = new Color(.018f, .075f, .17f, .86f);
+        public Color HomeDarkGlass { get; } = new Color(.02f, .10f, .22f, .70f);
+        public Color HomeDarkBorder { get; } = new Color(.08f, .55f, 1f, .40f);
+        public Color HomeDarkBorderSoft { get; } = new Color(.18f, .58f, 1f, .24f);
         public Color HomeDarkAccent { get; } = ParseColor("#20A8FF");
         public Color HomeDarkTextPrimary { get; } = ParseColor("#F4FAFF");
         public Color HomeDarkTextSecondary { get; } = ParseColor("#B8D3F2");
         public Color HomeDarkTextMuted { get; } = ParseColor("#7F9FC7");
-        public Color HomeDarkBackdropVeil { get; } = new Color(.004f, .025f, .075f, .18f);
+        public Color HomeDarkBackdropVeil { get; } = new Color(.004f, .02f, .065f, .30f);
+        // The 4K exhibition hall already contains the intended blue illumination. These home-only
+        // glass values reveal that authored light without changing Playback/SystemStatus surfaces.
+        public Color HomeHallBackdropVeil { get; } = new Color(.004f, .02f, .065f, .07f);
+        public Color HomeHallHeader { get; } = new Color(.006f, .035f, .105f, .50f);
+        public Color HomeHallNavigation { get; } = new Color(.005f, .04f, .12f, .58f);
+        public Color HomeHallContentSurface { get; } = new Color(.006f, .045f, .12f, .28f);
+        public Color HomeHallPanelSurface { get; } = new Color(.008f, .055f, .15f, .42f);
+        public Color HomeHallActionSurface { get; } = new Color(.008f, .05f, .14f, .56f);
+        public Color HomeHallBorder { get; } = new Color(.08f, .60f, 1f, .48f);
+        // Playback keeps more visual weight than the home grid so long narration text remains
+        // readable, while avoiding the former stack of 70%-86% opaque navy surfaces.
+        public Color PlaybackBackdropVeil { get; } = new Color(.004f, .02f, .065f, .13f);
+        public Color PlaybackHeader { get; } = new Color(.006f, .035f, .105f, .60f);
+        public Color PlaybackNavigation { get; } = new Color(.005f, .04f, .12f, .66f);
+        public Color PlaybackContentSurface { get; } = new Color(.006f, .04f, .115f, .38f);
+        public Color PlaybackPanelSurface { get; } = new Color(.008f, .05f, .14f, .58f);
+        public Color PlaybackPanelElevated { get; } = new Color(.01f, .065f, .17f, .66f);
+        public Color PlaybackControlSurface { get; } = new Color(.008f, .055f, .15f, .68f);
+        public Color PlaybackGlass { get; } = new Color(.015f, .105f, .24f, .58f);
+        public Color PlaybackBorder { get; } = new Color(.08f, .62f, 1f, .52f);
+        public Color PlaybackBorderSoft { get; } = new Color(.16f, .62f, 1f, .30f);
         public Color HomeGlassContentTint { get; } = new Color(1f, 1f, 1f, .72f);
         public Color HomeGlassTitleTint { get; } = new Color(1f, 1f, 1f, .76f);
         public Color HomeGlassBottomTint { get; } = new Color(1f, 1f, 1f, .82f);

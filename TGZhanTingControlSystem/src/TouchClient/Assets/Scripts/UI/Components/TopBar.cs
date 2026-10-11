@@ -128,7 +128,9 @@ namespace TG.Control.Touch.UI.Components
         public void RefreshTheme()
         {
             root.color = Color.clear;
-            signalLine.color = homeDarkMode ? theme.HomeDarkAccent : theme.Primary;
+            signalLine.color = homeDarkMode
+                ? new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g, theme.HomeDarkAccent.b, .44f)
+                : theme.Primary;
             brandMark.color = homeDarkMode ? theme.HomeDarkAccent : theme.ShellHighlight;
             title.color = homeDarkMode ? theme.HomeDarkTextPrimary : theme.TextPrimary;
             subtitle.color = homeDarkMode ? theme.HomeDarkTextSecondary : theme.TextSecondary;

@@ -31,6 +31,8 @@ namespace TG.Control.Touch.UI
         private Image.Type chromeNavigationDefaultType;
         private GameObject exitConfirmation;
         private bool homeDarkMode;
+        private bool homeHallMode;
+        private bool playbackHallMode;
 
         public Image Background => background;
         public RectTransform ContentRoot => contentHost.ContentRoot;
@@ -114,9 +116,12 @@ namespace TG.Control.Touch.UI
         public void SetActiveSection(TouchShellSection section) => navigation.SetActive(section);
         public void Tick(DateTime now) => topBar.Tick(now);
 
-        public void SetHomeDarkMode(bool enabled)
+        public void SetHomeDarkMode(bool enabled, bool revealHomeHall = false,
+            bool revealPlaybackHall = false)
         {
             homeDarkMode = enabled;
+            homeHallMode = enabled && revealHomeHall;
+            playbackHallMode = enabled && revealPlaybackHall;
             ApplyVisualMode();
         }
 
@@ -166,16 +171,25 @@ namespace TG.Control.Touch.UI
             background.color = homeDarkMode ? theme.HomeDarkBackground : theme.AppBackground;
             if (homeDarkBackground != null)
                 homeDarkBackground.gameObject.SetActive(homeDarkMode && homeDarkBackground.sprite != null);
-            veil.color = homeDarkMode ? theme.HomeDarkBackdropVeil : theme.BackdropVeil;
+            veil.color = playbackHallMode ? theme.PlaybackBackdropVeil
+                : homeHallMode ? theme.HomeHallBackdropVeil
+                : homeDarkMode ? theme.HomeDarkBackdropVeil : theme.BackdropVeil;
             ambientAccent.color = homeDarkMode
-                ? new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g, theme.HomeDarkAccent.b, .08f)
+                ? new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g, theme.HomeDarkAccent.b,
+                    homeHallMode ? .13f : playbackHallMode ? .11f : .08f)
                 : new Color(theme.Primary.r, theme.Primary.g, theme.Primary.b, .035f);
             if (homeDarkMode)
             {
-                HomeDarkVisualAssets.ApplySliced(chromeHeader, HomeDarkVisualAssets.TitleGlass,
-                    theme.HomeGlassChromeTint);
-                HomeDarkVisualAssets.ApplySliced(chromeNavigation, HomeDarkVisualAssets.SidebarGlass,
-                    theme.HomeGlassChromeTint);
+                // Keep chrome quiet and consistent: one translucent surface instead of the former
+                // double-line panel artwork competing with the exhibition photography.
+                chromeHeader.sprite = null;
+                chromeHeader.type = Image.Type.Simple;
+                chromeHeader.color = playbackHallMode ? theme.PlaybackHeader
+                    : homeHallMode ? theme.HomeHallHeader : theme.HomeDarkHeader;
+                chromeNavigation.sprite = null;
+                chromeNavigation.type = Image.Type.Simple;
+                chromeNavigation.color = playbackHallMode ? theme.PlaybackNavigation
+                    : homeHallMode ? theme.HomeHallNavigation : theme.HomeDarkNavigation;
             }
             else
             {
@@ -188,7 +202,7 @@ namespace TG.Control.Touch.UI
             }
             topBar?.SetHomeDarkMode(homeDarkMode);
             navigation?.SetHomeDarkMode(homeDarkMode);
-            contentHost?.SetHomeDarkMode(homeDarkMode, theme);
+            contentHost?.SetHomeDarkMode(homeDarkMode, theme, homeHallMode, playbackHallMode);
         }
 
         private void BuildExitConfirmation(Transform canvas)

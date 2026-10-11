@@ -15,6 +15,8 @@ namespace TG.Control.Touch.UI.Components
         private readonly Image.Type surfaceDefaultType;
         private readonly RectTransform contentRoot;
         private bool homeDarkMode;
+        private bool revealHomeBackground;
+        private bool revealPlaybackBackground;
 
         public RectTransform Root => frame.rectTransform;
         public RectTransform ContentRoot => contentRoot;
@@ -39,9 +41,16 @@ namespace TG.Control.Touch.UI.Components
         {
             if (homeDarkMode)
             {
-                HomeDarkVisualAssets.ApplySliced(frame, HomeDarkVisualAssets.ContentGlass,
-                    theme.HomeGlassContentTint);
-                surface.color = Color.clear;
+                // A single restrained outline aligns the content area with the home header and
+                // action bar without stacking the former double-line glass artwork.
+                frame.sprite = frameDefaultSprite;
+                frame.type = frameDefaultType;
+                frame.color = revealPlaybackBackground ? theme.PlaybackBorderSoft
+                    : revealHomeBackground ? theme.HomeHallBorder : theme.HomeDarkBorderSoft;
+                surface.sprite = surfaceDefaultSprite;
+                surface.type = surfaceDefaultType;
+                surface.color = revealPlaybackBackground ? theme.PlaybackContentSurface
+                    : revealHomeBackground ? theme.HomeHallContentSurface : theme.HomeDarkSurface;
             }
             else
             {
@@ -54,10 +63,14 @@ namespace TG.Control.Touch.UI.Components
             }
         }
 
-        public void SetHomeDarkMode(bool enabled, TouchTheme theme)
+        public void SetHomeDarkMode(bool enabled, TouchTheme theme, bool revealBackground = false,
+            bool revealPlayback = false)
         {
-            if (homeDarkMode == enabled) return;
+            if (homeDarkMode == enabled && revealHomeBackground == revealBackground &&
+                revealPlaybackBackground == revealPlayback) return;
             homeDarkMode = enabled;
+            revealHomeBackground = enabled && revealBackground;
+            revealPlaybackBackground = enabled && revealPlayback;
             RefreshTheme(theme);
         }
     }

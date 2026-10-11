@@ -14,6 +14,8 @@ namespace TG.Control.LedPlayer
         public static LedContentCache Shared { get; } = new LedContentCache();
         private readonly System.Collections.Generic.Dictionary<string, ValidationMetadata> validationByUrl =
             new System.Collections.Generic.Dictionary<string, ValidationMetadata>(StringComparer.OrdinalIgnoreCase);
+        private readonly System.Collections.Generic.Dictionary<string, ValidatedFileMetadata> validatedFilesByUrl =
+            new System.Collections.Generic.Dictionary<string, ValidatedFileMetadata>(StringComparer.OrdinalIgnoreCase);
         private string contentDirectory;
 
         public void ConfigureDirectory(string directory)
@@ -27,7 +29,12 @@ namespace TG.Control.LedPlayer
         public void RegisterValidation(string mediaUrl, long expectedSize, string expectedSha256)
         {
             if (string.IsNullOrWhiteSpace(mediaUrl)) return;
-            validationByUrl[mediaUrl] = new ValidationMetadata(expectedSize, expectedSha256);
+            var normalizedSha256 = NormalizeSha256(expectedSha256);
+            if (validationByUrl.TryGetValue(mediaUrl, out var previous) &&
+                (previous.SizeBytes != expectedSize ||
+                 !string.Equals(previous.Sha256, normalizedSha256, StringComparison.OrdinalIgnoreCase)))
+                validatedFilesByUrl.Remove(mediaUrl);
+            validationByUrl[mediaUrl] = new ValidationMetadata(expectedSize, normalizedSha256);
         }
 
         public bool HasExpectedFile(string mediaUrl, long expectedSize)
@@ -77,16 +84,25 @@ namespace TG.Control.LedPlayer
             var finalPath = GetCachePath(mediaUrl);
             if (File.Exists(finalPath))
             {
+                if (CanReuseValidatedFile(mediaUrl, finalPath, expectedSize, expectedSha256))
+                {
+                    Debug.Log("LED已复用同步阶段校验通过的本地素材，无需重复计算SHA-256：" + Path.GetFileName(finalPath));
+                    success(new Uri(finalPath).AbsoluteUri);
+                    yield break;
+                }
+
                 bool valid = false;
                 string validationError = null;
                 yield return ValidateFile(finalPath, expectedSize, expectedSha256,
                     (ok, error) => { valid = ok; validationError = error; });
                 if (valid)
                 {
+                    RememberValidatedFile(mediaUrl, finalPath, expectedSize, expectedSha256);
                     success(new Uri(finalPath).AbsoluteUri);
                     yield break;
                 }
                 Debug.LogWarning("LED缓存文件校验失败，将重新下载：" + validationError);
+                validatedFilesByUrl.Remove(mediaUrl);
                 File.Delete(finalPath);
             }
 
@@ -101,6 +117,7 @@ namespace TG.Control.LedPlayer
                 if (partialValid)
                 {
                     File.Move(partialPath, finalPath);
+                    RememberValidatedFile(mediaUrl, finalPath, expectedSize, expectedSha256);
                     success(new Uri(finalPath).AbsoluteUri);
                     yield break;
                 }
@@ -135,6 +152,7 @@ namespace TG.Control.LedPlayer
                         if (rangeFileValid)
                         {
                             File.Move(partialPath, finalPath);
+                            RememberValidatedFile(mediaUrl, finalPath, expectedSize, expectedSha256);
                             success(new Uri(finalPath).AbsoluteUri);
                             yield break;
                         }
@@ -171,8 +189,33 @@ namespace TG.Control.LedPlayer
             }
 
             File.Move(partialPath, finalPath);
+            RememberValidatedFile(mediaUrl, finalPath, expectedSize, expectedSha256);
             success(new Uri(finalPath).AbsoluteUri);
         }
+
+        private bool CanReuseValidatedFile(string mediaUrl, string path, long expectedSize, string expectedSha256)
+        {
+            if (expectedSize <= 0 || string.IsNullOrWhiteSpace(expectedSha256) || expectedSha256.Length != 64 ||
+                !validatedFilesByUrl.TryGetValue(mediaUrl, out var validated)) return false;
+            var file = new FileInfo(path);
+            return file.Exists && file.Length == expectedSize && file.Length == validated.FileSizeBytes &&
+                   file.LastWriteTimeUtc.Ticks == validated.LastWriteUtcTicks &&
+                   validated.ExpectedSizeBytes == expectedSize &&
+                   string.Equals(validated.ExpectedSha256, NormalizeSha256(expectedSha256),
+                       StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void RememberValidatedFile(string mediaUrl, string path, long expectedSize, string expectedSha256)
+        {
+            if (expectedSize <= 0 || string.IsNullOrWhiteSpace(expectedSha256) || expectedSha256.Length != 64) return;
+            var file = new FileInfo(path);
+            if (!file.Exists) return;
+            validatedFilesByUrl[mediaUrl] = new ValidatedFileMetadata(file.Length, file.LastWriteTimeUtc.Ticks,
+                expectedSize, NormalizeSha256(expectedSha256));
+        }
+
+        private static string NormalizeSha256(string value) =>
+            string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim().ToLowerInvariant();
 
         private static IEnumerator ValidateFile(string path, long expectedSize, string expectedSha256,
             Action<bool, string> completed)
@@ -241,6 +284,23 @@ namespace TG.Control.LedPlayer
 
             public long SizeBytes { get; }
             public string Sha256 { get; }
+        }
+
+        private readonly struct ValidatedFileMetadata
+        {
+            public ValidatedFileMetadata(long fileSizeBytes, long lastWriteUtcTicks, long expectedSizeBytes,
+                string expectedSha256)
+            {
+                FileSizeBytes = fileSizeBytes;
+                LastWriteUtcTicks = lastWriteUtcTicks;
+                ExpectedSizeBytes = expectedSizeBytes;
+                ExpectedSha256 = expectedSha256;
+            }
+
+            public long FileSizeBytes { get; }
+            public long LastWriteUtcTicks { get; }
+            public long ExpectedSizeBytes { get; }
+            public string ExpectedSha256 { get; }
         }
 
         private readonly struct ValidationResult

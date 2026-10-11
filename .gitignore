@@ -42,6 +42,19 @@ Recovery/Analysis/*.log
 **/[Oo]utput/
 **/TestResults/
 
+# Local Windows player exports and recovered legacy runtime
+/CenterControlSysExe/
+/CenterControlSysExe.rar
+/LedPlayerExe/
+/LedPlayerExe.rar
+/XuTing/
+
+# Source packages and local authoring tools are kept outside Git; extracted Unity assets are tracked.
+TGZhanTingControlSystem/src/TouchClient/Assets/TGExhibitionUI/*.zip
+TGZhanTingControlSystem/src/TouchClient/Assets/TGExhibitionUI/*.zip.meta
+TGZhanTingControlSystem/src/TouchClient/Assets/TGExhibitionUI/*_installer.exe
+TGZhanTingControlSystem/src/TouchClient/Assets/TGExhibitionUI/*_installer.exe.meta
+
 # Operating-system metadata
 .DS_Store
 Thumbs.db

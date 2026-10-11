@@ -5,7 +5,7 @@ using UnityEngine.UI;
 namespace TG.Control.Touch.UI.Theme
 {
     /// <summary>
-    /// Loads and caches the Phase UI-12 home-only visual assets. Keeping this in one place prevents
+    /// Loads and caches the home-only visual assets. Keeping this in one place prevents
     /// pages from repeatedly creating sprites and makes the visual mode reversible for non-home pages.
     /// </summary>
     public static class HomeDarkVisualAssets
@@ -13,7 +13,7 @@ namespace TG.Control.Touch.UI.Theme
         private const string Root = "TGExhibitionUI/HomeDarkV2/";
         private static readonly Dictionary<string, Sprite> RuntimeSprites = new Dictionary<string, Sprite>();
 
-        public static Sprite HallBackground => Load("Backgrounds/Home_Hall_1920x1080", 0);
+        public static Sprite HallBackground => Load("Backgrounds/HomeTechBackground_4K", 0);
         public static Sprite ContentGlass => Load("Panels/Content_Glass_9slice", 24);
         public static Sprite TitleGlass => Load("Panels/Title_Glass_9slice", 24);
         public static Sprite BottomGlass => Load("Panels/Bottom_Glass_9slice", 24);

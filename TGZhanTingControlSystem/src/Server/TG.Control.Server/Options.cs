@@ -11,7 +11,7 @@ public sealed class PlaybackOptions
     public const string SectionName = "Playback";
     public string TouchClientId { get; init; } = "touch-main";
     public string LedClientId { get; init; } = "led-main";
-    public int PrepareLeadMilliseconds { get; init; } = 1500;
+    public int PrepareLeadMilliseconds { get; init; } = 250;
     public int SyncToleranceMilliseconds { get; init; } = 500;
     public int LongPollSeconds { get; init; } = 20;
     public bool RequireLedReadyBeforeStart { get; init; } = true;

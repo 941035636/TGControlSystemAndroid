@@ -1,0 +1,110 @@
+[
+  {
+    "index": 1,
+    "name": "一路向新",
+    "original_size": "1920x1080",
+    "output_size": "1024x544",
+    "filename": "01_一路向新.png",
+    "crop": "top/bottom 30px",
+    "sha256": "406297b03143d7383c9caa5d2e83ae39e045bdac2d7513e44c4b4e79353ca4e5"
+  },
+  {
+    "index": 2,
+    "name": "历史沿革",
+    "original_size": "1578x866",
+    "output_size": "1024x544",
+    "filename": "02_历史沿革.png",
+    "crop": "top/bottom 14px",
+    "sha256": "40f26a895165e39f5ab99c71403f2d5ce6c48c63055615a18a95e8202740112b"
+  },
+  {
+    "index": 3,
+    "name": "不曾忘却的记忆",
+    "original_size": "1684x804",
+    "output_size": "1024x544",
+    "filename": "03_不曾忘却的记忆.png",
+    "crop": "left/right 85px",
+    "sha256": "4ccc76bd0c9e94294fc5892fb2fa80f94cb86097a61971b2aaecab3135770573"
+  },
+  {
+    "index": 4,
+    "name": "子分公司",
+    "original_size": "1790x873",
+    "output_size": "1024x544",
+    "filename": "04_子分公司.png",
+    "crop": "left/right 73px",
+    "sha256": "8de93a2bca162f94db5cf559c43e4707d36e7f6fbb5c7cf2459843d46ae49388"
+  },
+  {
+    "index": 5,
+    "name": "领导关怀",
+    "original_size": "1702x849",
+    "output_size": "1024x544",
+    "filename": "05_领导关怀.png",
+    "crop": "left/right 52px",
+    "sha256": "2e51c8c0317fd3199cb9a2f4200d3188a2279d3eec1a6cf4dc332611869c77f5"
+  },
+  {
+    "index": 6,
+    "name": "企业荣誉",
+    "original_size": "1920x1080",
+    "output_size": "1024x544",
+    "filename": "06_企业荣誉.png",
+    "crop": "top/bottom 30px",
+    "sha256": "7bf20f565b691ca896f579581cb99bcf4eb302e4b319f6d54032dad71b7da6a1"
+  },
+  {
+    "index": 7,
+    "name": "科技创新",
+    "original_size": "1917x1080",
+    "output_size": "1024x544",
+    "filename": "07_科技创新.png",
+    "crop": "top/bottom 31px",
+    "sha256": "5c19ff7d840a26c1915d66252a2df8618ef12373ddb2dc353f4ff9588be50f32"
+  },
+  {
+    "index": 8,
+    "name": "产品体系",
+    "original_size": "1733x826",
+    "output_size": "1024x544",
+    "filename": "08_产品体系.png",
+    "crop": "left/right 89px",
+    "sha256": "4922cd6320911e88075ce922f752a507df281083398dee0d1c779ecf7513f991"
+  },
+  {
+    "index": 9,
+    "name": "数智领航",
+    "original_size": "1822x859",
+    "output_size": "1024x544",
+    "filename": "09_数智领航.png",
+    "crop": "left/right 102px",
+    "sha256": "e27c24f64d2c8be45635b927694362c660d904370361c6a09f24bb9c82314a63"
+  },
+  {
+    "index": 10,
+    "name": "绿色低碳",
+    "original_size": "1819x870",
+    "output_size": "1024x544",
+    "filename": "10_绿色低碳.png",
+    "crop": "left/right 90px",
+    "sha256": "a7459837413a1a26e65b61c3c484b602f19f751ebb05dfd082b65b1df9d1b052"
+  },
+  {
+    "index": 11,
+    "name": "敢当石特",
+    "original_size": "1717x849",
+    "output_size": "1024x544",
+    "filename": "11_敢当石特.png",
+    "crop": "left/right 59px",
+    "sha256": "765ea1586bec8f5d505e37a6a2b1ed37521601daac6a671ea09f467d128b2d0b"
+  },
+  {
+    "index": 12,
+    "name": "党建赋能",
+    "original_size": "1774x896",
+    "output_size": "1024x544",
+    "filename": "12_党建赋能.png",
+    "crop": "left/right 43px",
+    "sha256": "60e76361e174258e2728589422eabecb767c2641969248467128c514b6bbf3a3"
+  }
+]

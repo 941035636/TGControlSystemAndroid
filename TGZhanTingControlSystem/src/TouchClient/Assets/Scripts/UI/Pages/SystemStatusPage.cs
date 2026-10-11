@@ -22,6 +22,7 @@ namespace TG.Control.Touch.UI.Pages
         private readonly SystemHealthCard narrationCard;
         private readonly Image sessionFrame;
         private readonly Image sessionSurface;
+        private readonly Image sessionAccent;
         private readonly Text sessionTitle;
         private readonly Text sessionDetail;
         private readonly Button viewPlaybackButton;
@@ -35,7 +36,7 @@ namespace TG.Control.Touch.UI.Pages
             this.theme = theme ?? throw new ArgumentNullException(nameof(theme));
             root = factory.Rect("System Status Page", parent);
             var layout = root.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.spacing = theme.SectionSpacing;
+            layout.spacing = theme.Space12;
             layout.childControlWidth = true;
             layout.childControlHeight = true;
             layout.childForceExpandHeight = false;
@@ -54,34 +55,39 @@ namespace TG.Control.Touch.UI.Pages
             grid.constraintCount = 2;
             grid.childAlignment = TextAnchor.UpperCenter;
 
-            serverCard = new SystemHealthCard(factory, theme, gridRoot, "Server 服务", "01");
-            ledCard = new SystemHealthCard(factory, theme, gridRoot, "LED 播放端", "02");
-            contentCard = new SystemHealthCard(factory, theme, gridRoot, "正式内容", "03");
-            narrationCard = new SystemHealthCard(factory, theme, gridRoot, "讲解服务", "04");
+            serverCard = new SystemHealthCard(factory, theme, gridRoot, "Server 服务", "01", "status");
+            ledCard = new SystemHealthCard(factory, theme, gridRoot, "LED 播放端", "02", "home");
+            contentCard = new SystemHealthCard(factory, theme, gridRoot, "正式内容", "03", "topic");
+            narrationCard = new SystemHealthCard(factory, theme, gridRoot, "讲解服务", "04", "mic");
 
-            sessionFrame = factory.RoundedImage("Active Narration Summary", root, theme.Border);
+            sessionFrame = factory.RoundedImage("Active Narration Summary", root, theme.HomeDarkBorderSoft);
             var sessionElement = sessionFrame.gameObject.AddComponent<LayoutElement>();
             sessionElement.minHeight = theme.SystemStatusSessionHeight;
             sessionElement.preferredHeight = theme.SystemStatusSessionHeight;
             sessionElement.flexibleHeight = 0;
-            sessionSurface = factory.RoundedImage("Active Narration Surface", sessionFrame.transform, theme.PrimarySoft);
+            sessionSurface = factory.RoundedImage("Active Narration Surface", sessionFrame.transform,
+                theme.HomeDarkSurfaceElevated);
             TouchUiFactory.Stretch(sessionSurface.rectTransform, 1, 1, -1, -1);
-            var accent = factory.Image("Active Narration Accent", sessionSurface.transform, theme.Primary);
-            TouchUiFactory.Anchor(accent.rectTransform, 0, 0, 0, 1, 0, 0, 6, 0);
+            sessionSurface.raycastTarget = false;
+            sessionAccent = factory.Image("Active Narration Accent", sessionSurface.transform,
+                theme.HomeDarkAccent);
+            TouchUiFactory.Anchor(sessionAccent.rectTransform, 0, 0, 0, 1, 0, 14, 5, -14);
+            sessionAccent.raycastTarget = false;
             sessionTitle = factory.Label("Active Narration Title", sessionSurface.transform,
                 "当前有讲解任务正在执行", theme.CardTitle, FontStyle.Bold,
-                theme.TextPrimary, TextAnchor.MiddleLeft);
+                theme.HomeDarkTextPrimary, TextAnchor.MiddleLeft);
             TouchUiFactory.Anchor(sessionTitle.rectTransform, 0, 1, .68f, 1,
                 theme.PanelPadding, -56, 0, -14);
             sessionDetail = factory.Label("Active Narration Detail", sessionSurface.transform,
-                string.Empty, theme.Body, FontStyle.Normal, theme.TextSecondary, TextAnchor.MiddleLeft);
+                string.Empty, theme.Body, FontStyle.Normal, theme.HomeDarkTextSecondary,
+                TextAnchor.MiddleLeft);
             TouchUiFactory.Anchor(sessionDetail.rectTransform, 0, 0, .72f, 1,
                 theme.PanelPadding, 18, 0, -58);
             viewPlaybackButton = factory.TouchButton(sessionSurface.transform, "查看当前讲解", true,
                 () => ViewPlaybackRequested?.Invoke());
             TouchUiFactory.Anchor(viewPlaybackButton.GetComponent<RectTransform>(), 1, .5f, 1, .5f,
                 -260, -theme.ButtonHeight * .5f, -theme.PanelPadding, theme.ButtonHeight * .5f);
-            sessionFrame.gameObject.SetActive(false);
+            ConfigurePlaybackButton();
         }
 
         public void Render(TouchUiState state, string verifiedRouteName)
@@ -102,8 +108,9 @@ namespace TG.Control.Touch.UI.Pages
             ledCard.RefreshTheme();
             contentCard.RefreshTheme();
             narrationCard.RefreshTheme();
-            sessionFrame.color = theme.Border;
-            sessionSurface.color = theme.PrimarySoft;
+            sessionFrame.color = theme.HomeDarkBorderSoft;
+            sessionSurface.color = theme.HomeDarkSurfaceElevated;
+            ConfigurePlaybackButton();
         }
 
         private void RenderServer(TouchUiState state)
@@ -111,7 +118,7 @@ namespace TG.Control.Touch.UI.Pages
             if (state.Connected)
             {
                 serverCard.Render("服务在线", "触控终端已连接展厅服务，状态变化会自动同步到当前页面。",
-                    StatusTone.Success, "连接状态：在线", "自动状态更新正常");
+                    StatusTone.Success, "连接状态：在线", "状态更新：自动同步");
                 return;
             }
             serverCard.Render("服务连接中断", "系统正在自动重连；连接恢复前无法确认LED、内容和讲解状态。",
@@ -192,7 +199,7 @@ namespace TG.Control.Touch.UI.Pages
             {
                 narrationCard.Render("讲解已暂停", "当前讲解任务处于暂停状态，可进入讲解页继续。",
                     StatusTone.Warning, "当前主题：" + Safe(session.moduleName),
-                    "当前节点：" + Safe(session.nodeName));
+                    BuildNodeFact(session));
                 return;
             }
             if (!session.playPublished)
@@ -205,13 +212,21 @@ namespace TG.Control.Touch.UI.Pages
             }
             narrationCard.Render("讲解进行中", "当前任务正在按既定路线执行，可进入讲解页查看和控制。",
                 StatusTone.Info, "当前主题：" + Safe(session.moduleName),
-                "当前节点：" + Safe(session.nodeName));
+                BuildNodeFact(session));
         }
 
         private void RenderActiveSession(TouchUiState state, string verifiedRouteName)
         {
-            sessionFrame.gameObject.SetActive(state.HasActiveSession);
-            if (!state.HasActiveSession) return;
+            if (!state.HasActiveSession)
+            {
+                sessionTitle.text = "当前没有进行中的讲解任务";
+                sessionDetail.text = "系统空闲时可从讲解首页选择主题，或打开讲解路线开始新的任务。";
+                sessionAccent.color = theme.HomeDarkTextMuted;
+                sessionFrame.color = theme.HomeDarkBorderSoft;
+                viewPlaybackButton.GetComponentInChildren<Text>().text = "暂无活动任务";
+                viewPlaybackButton.interactable = false;
+                return;
+            }
             var session = state.Session;
             var stateLabel = session == null ? "状态恢复中" : session.paused ? "已暂停" :
                 session.playPublished ? "正在讲解" : "准备中";
@@ -224,9 +239,40 @@ namespace TG.Control.Touch.UI.Pages
             {
                 var route = string.IsNullOrWhiteSpace(verifiedRouteName) ? string.Empty :
                     "路线：" + verifiedRouteName + " · ";
-                sessionDetail.text = route + "主题：" + Safe(session.moduleName) + " · 节点：" + Safe(session.nodeName);
+                sessionDetail.text = route + "主题：" + Safe(session.moduleName) + " · 节点：" +
+                                     Safe(session.nodeName) + BuildNodeProgress(session);
             }
+            sessionAccent.color = session?.paused == true ? theme.Warning : theme.HomeDarkAccent;
+            sessionFrame.color = Color.Lerp(theme.HomeDarkBorderSoft, sessionAccent.color, .20f);
+            viewPlaybackButton.GetComponentInChildren<Text>().text = "查看当前讲解";
             viewPlaybackButton.interactable = state.HasActiveSession;
+        }
+
+        private void ConfigurePlaybackButton()
+        {
+            var image = viewPlaybackButton.GetComponent<Image>();
+            image.color = theme.Primary;
+            var label = viewPlaybackButton.GetComponentInChildren<Text>();
+            if (label != null) label.color = Color.white;
+            var outline = viewPlaybackButton.GetComponent<Outline>();
+            if (outline == null) outline = viewPlaybackButton.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(theme.HomeDarkAccent.r, theme.HomeDarkAccent.g,
+                theme.HomeDarkAccent.b, .48f);
+            outline.effectDistance = new Vector2(1, -1);
+            outline.useGraphicAlpha = true;
+        }
+
+        private static string BuildNodeFact(TG.Control.UnityContracts.PlaybackSessionStatus session)
+        {
+            if (session == null) return "当前节点：状态同步中";
+            return "当前节点：" + Safe(session.nodeName) + BuildNodeProgress(session);
+        }
+
+        private static string BuildNodeProgress(TG.Control.UnityContracts.PlaybackSessionStatus session)
+        {
+            return session != null && session.totalNodes > 0
+                ? " · " + session.currentNodeNumber + " / " + session.totalNodes
+                : string.Empty;
         }
 
         private static string Safe(string value) => string.IsNullOrWhiteSpace(value) ? "状态同步中" : value.Trim();

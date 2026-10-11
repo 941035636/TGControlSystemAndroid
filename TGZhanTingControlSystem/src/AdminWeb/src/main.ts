@@ -2,6 +2,7 @@ import './style.css'
 import { api, ApiError, resolveAssetUrl, type AssetKind, type ClientRuntimeStatus, type ContentDraftSnapshot, type ContentPublishReadiness, type ContentVersionSummary, type ExhibitionModule, type NarrationAudioCandidateEvaluation, type NarrationAudioDraftStatus, type NarrationNode, type NarrationRoute, type OperationalEvent, type PlaybackSessionStatus, type PublishedContent, type SystemReadiness, type TtsProviderDescriptor, type TtsSynthesisConfiguration, type UiElementOverride, type UiExperienceConfig } from './api'
 import { bindingStatusLabel, jobStatusLabel, TtsWorkflowController, type TtsWorkflowApi } from './tts-workflow'
 import { validateLedIdleMediaDimensions } from './ui-media-validation'
+import { adminUiFeatures, normalizeAdminWorkspaceView, showRouteBasedTouchTemplates, type AdminWorkspaceView } from './feature-flags'
 
 const app = document.querySelector<HTMLDivElement>('#app')
 if (!app) throw new Error('未找到管理页面根节点')
@@ -30,7 +31,7 @@ let readiness: SystemReadiness | null = null
 let versions: ContentVersionSummary[] = []
 let operationEvents: OperationalEvent[] = []
 let publishError = ''
-let activeView: 'content'|'routes'|'versions'|'operations' = 'content'
+let activeView: AdminWorkspaceView = 'content'
 const draftKey = 'tg-content-draft-v1'
 
 const ttsWorkflowApi: TtsWorkflowApi = {
@@ -98,7 +99,7 @@ const displayMessage = (value: string): string => {
 }
 
 function renderLogin(message = ''): void {
-  root.innerHTML = `<main class="login-shell"><section class="login-brand"><p class="eyebrow">展厅智能中控</p><h1>展厅自动讲解<br/>管理平台</h1><p>统一管理 12 个展陈模块、宣传视频、讲解文案与内容发布。</p><div class="brand-stats"><span>双屏联动</span><span>语音讲解</span><span>组合路线</span></div></section><section class="login-panel"><form id="login-form" class="login-card"><h2>欢迎登录</h2><p class="login-tip">请输入具有内容发布权限的管理账号</p><label>用户名<input id="username" autocomplete="username" placeholder="请输入用户名" /></label><label>密码<input id="password" type="password" autocomplete="current-password" placeholder="请输入密码" /></label><p id="login-error" class="login-error">${escapeHtml(message)}</p><button class="primary login-button" type="submit">登录管理平台</button><p class="login-foot">展厅智能中控系统 · 内部管理入口</p></form></section></main>`
+  root.innerHTML = `<main class="login-shell"><section class="login-brand"><p class="eyebrow">展厅智能中控</p><h1>展厅自动讲解<br/>管理平台</h1><p>统一管理 12 个展陈模块、宣传视频、讲解文案与内容发布。</p><div class="brand-stats"><span>双屏联动</span><span>语音讲解</span><span>内容发布</span></div></section><section class="login-panel"><form id="login-form" class="login-card"><h2>欢迎登录</h2><p class="login-tip">请输入具有内容发布权限的管理账号</p><label>用户名<input id="username" autocomplete="username" placeholder="请输入用户名" /></label><label>密码<input id="password" type="password" autocomplete="current-password" placeholder="请输入密码" /></label><p id="login-error" class="login-error">${escapeHtml(message)}</p><button class="primary login-button" type="submit">登录管理平台</button><p class="login-foot">展厅智能中控系统 · 内部管理入口</p></form></section></main>`
   root.querySelector<HTMLFormElement>('#login-form')?.addEventListener('submit', login)
   root.querySelector<HTMLInputElement>('#password')?.focus()
 }
@@ -131,13 +132,14 @@ async function loadDashboard(): Promise<void> {
 
 function renderDashboard(): void {
   if (!content) return
+  activeView = normalizeAdminWorkspaceView(activeView)
   const availableProviders = ttsProviders.filter(item => item.available && item.voices.length > 0)
   root.innerHTML = `<header class="topbar"><div><p class="eyebrow">展厅智能中控</p><h1>展厅自动讲解管理平台</h1><p class="meta">正式内容 ${formatVersion(content.version)} · 草稿第 ${draftRevision} 次修订 · ${content.modules.length} 个模块 · 发布人 ${escapeHtml(displayAccountName(content.publishedBy || '系统初始化'))}</p></div><div class="actions"><div class="tts-badge ${availableProviders.length ? 'ready' : ''}"><span>语音合成服务</span><strong>${availableProviders.length ? `${availableProviders.length} 个服务可用` : '当前未配置'}</strong></div><div class="account"><span>当前账号</span><strong>${escapeHtml(displayAccountName(username))}</strong></div><button id="logout">退出</button><button id="publish" class="primary" ${dirty && !draftConflict && publishReadiness?.canPublish === true ? '' : 'disabled'}>发布新版本</button></div></header>
-    <nav class="workspace-nav">${navButton('content','内容中心')}${navButton('routes','讲解路线')}${navButton('versions','发布与回滚')}${navButton('operations','终端与运行')}</nav>
+    <nav class="workspace-nav">${navButton('content','内容中心')}${adminUiFeatures.enableCustomRouteUi ? navButton('routes','讲解路线') : ''}${navButton('versions','发布与回滚')}${navButton('operations','终端与运行')}</nav>
     <main>${renderWorkspace()}</main><div id="toast" class="toast" aria-live="polite"></div>`
   root.querySelector('#publish')?.addEventListener('click', publish)
   root.querySelector('#logout')?.addEventListener('click', async () => { disposeNodeRuntime(); await api.logout(); content = null; username = ''; renderLogin() })
-  root.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button => button.addEventListener('click',()=>{activeView=button.dataset.view as typeof activeView;renderDashboard()}))
+  root.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button => button.addEventListener('click',()=>{activeView=normalizeAdminWorkspaceView(button.dataset.view as AdminWorkspaceView);renderDashboard()}))
   if(activeView==='content'){
     root.querySelector('#add')?.addEventListener('click', addModule)
     root.querySelector('#edit-ui')?.addEventListener('click', openUiEditor)
@@ -177,6 +179,7 @@ function renderRoutesView():string{
 }
 
 function bindRouteManagement():void{
+  if(!adminUiFeatures.enableCustomRouteUi){activeView='content';renderDashboard();return}
   root.querySelector('#add-route')?.addEventListener('click',()=>openRouteEditor(null))
   root.querySelectorAll<HTMLElement>('[data-edit-route]').forEach(button=>button.addEventListener('click',()=>openRouteEditor(routes.find(item=>item.id===button.dataset.editRoute)??null)))
   root.querySelectorAll<HTMLElement>('[data-delete-route]').forEach(button=>button.addEventListener('click',async()=>{
@@ -186,6 +189,7 @@ function bindRouteManagement():void{
 }
 
 function openRouteEditor(route:NarrationRoute|null):void{
+  if(!adminUiFeatures.enableCustomRouteUi){activeView='content';renderDashboard();showToast('该功能暂未开放。');return}
   if(!content)return
   const modal=document.createElement('div');modal.className='modal-backdrop';modal.id='route-modal'
   modal.innerHTML=`<section class="route-editor-modal"><header class="editor-header"><div><p class="eyebrow">路线编辑</p><h2>${route?'编辑讲解路线':'新建讲解路线'}</h2></div><button id="close-route" class="icon-button">×</button></header><div class="route-editor-body"><label>路线名称<input id="route-name" maxlength="30" value="${escapeHtml(route?.name??'')}" placeholder="例如：重要客户接待路线"/></label><strong>按讲解顺序选择主题</strong><p class="section-note">点击主题加入路线；使用箭头调整顺序。</p><div id="route-order" class="route-order"></div><div class="route-module-picker">${content.modules.filter(item=>item.enabled).sort((a,b)=>a.order-b.order).map(item=>`<button data-pick-module="${item.id}"><span>${String(item.order).padStart(2,'0')}</span>${escapeHtml(item.name)}</button>`).join('')}</div><footer class="editor-footer"><span>保存后中控端会自动刷新常用路线。</span><button id="cancel-route">取消</button><button id="save-route" class="primary">保存路线</button></footer></div></section>`
@@ -512,7 +516,7 @@ function openUiEditor(): void {
   const modal = document.createElement('div'); modal.id='ui-modal'; modal.className='modal-backdrop'
   modal.innerHTML=`<section class="ui-editor-modal"><header class="editor-header"><div><p class="eyebrow">终端外观</p><h2>终端界面设置</h2></div><button id="close-ui" class="icon-button">×</button></header><div class="ui-editor-body">
     <section class="ui-config-card"><div class="ui-config-title"><div><strong>触控中控端</strong><p>标题、配色和背景图发布后由中控端自动获取。</p></div><span>触控界面 · 1920×1080</span></div><div class="ui-fields"><label>主标题<input id="touch-title" value="${escapeHtml(config.touchTitle)}"/></label><label>副标题<input id="touch-subtitle" value="${escapeHtml(config.touchSubtitle)}"/></label><div class="field-row colors"><label>背景颜色<input id="touch-bg-color" type="color" value="${escapeHtml(config.touchBackgroundColor)}"/></label><label>强调颜色<input id="touch-accent" type="color" value="${escapeHtml(config.touchAccentColor)}"/></label></div><div class="media-setting"><div><strong>背景图</strong><p>${config.touchBackgroundUrl?'已设置背景图':'未设置，使用纯色背景'}</p></div><label class="upload-button">上传替换<input id="touch-background-file" type="file" accept="image/*"/></label><button id="clear-touch-background">移除</button></div></div></section>
-    <section class="ui-config-card"><div class="ui-config-title"><div><strong>中控欢迎页</strong><p>启动时显示欢迎页；欢迎音频仅由LED大屏音响播放。</p></div><span>全屏触摸开启</span></div><div class="ui-fields"><div class="visibility-options"><label class="check-field"><input id="touch-welcome-enabled" type="checkbox"/>启用欢迎页</label><label class="check-field"><input id="welcome-audio-enabled" type="checkbox"/>启用欢迎语音</label><label>无操作自动返回（秒）<input id="touch-idle-timeout" type="number" min="30" max="3600" step="10"/></label></div><div class="field-row"><label>品牌文字<input id="welcome-eyebrow" maxlength="80"/></label><label>欢迎标题<input id="welcome-title" maxlength="200"/></label></div><label>欢迎说明<input id="welcome-subtitle" maxlength="200"/></label><label>字幕时间轴（每行：开始秒,结束秒,字幕文本）<textarea id="welcome-captions" rows="4" placeholder="0,4,欢迎来到智慧展厅"></textarea></label><div class="media-setting"><div><strong>欢迎页标志图</strong><p id="welcome-logo-state">未设置时显示品牌文字</p></div><label class="upload-button">上传标志图<input id="welcome-logo-file" type="file" accept="image/*"/></label><button id="clear-welcome-logo">移除</button></div><div class="media-setting"><div><strong>欢迎页背景图</strong><p id="welcome-background-state">未设置时使用中控背景图</p></div><label class="upload-button">上传背景图<input id="welcome-background-file" type="file" accept="image/*"/></label><button id="clear-welcome-background">移除</button></div><div class="media-setting"><div><strong>欢迎词音频</strong><p id="welcome-audio-state">必须上传已校验音频，播放完成后才进入首页</p></div><label class="upload-button">上传音频<input id="welcome-audio-file" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg"/></label><button id="clear-welcome-audio">移除</button></div></div></section>
+    <section class="ui-config-card"><div class="ui-config-title"><div><strong>中控欢迎页</strong><p>启动时显示欢迎页；欢迎音频仅由LED大屏音响播放。</p></div><span>全屏触摸开启</span></div><div class="ui-fields"><div class="visibility-options"><label class="check-field"><input id="touch-welcome-enabled" type="checkbox"/>启用欢迎页</label><label class="check-field"><input id="welcome-audio-enabled" type="checkbox"/>启用欢迎语音</label><label>无操作自动返回（秒）<input id="touch-idle-timeout" type="number" min="30" max="3600" step="10"/></label></div><div class="field-row"><label>品牌文字<input id="welcome-eyebrow" maxlength="80"/></label><label>欢迎标题<input id="welcome-title" maxlength="200"/></label></div><label>欢迎说明<input id="welcome-subtitle" maxlength="200"/></label><label>字幕时间轴（每行：开始秒,结束秒,字幕文本）<textarea id="welcome-captions" rows="4" placeholder="0,4,欢迎来到智慧展厅"></textarea></label><div class="media-setting"><div><strong>欢迎页标志图</strong><p id="welcome-logo-state">未设置时显示品牌文字</p></div><label class="upload-button">上传标志图<input id="welcome-logo-file" type="file" accept="image/*"/></label><button id="clear-welcome-logo">移除</button></div><div class="media-setting"><div><strong>欢迎页背景图</strong><p id="welcome-background-state">未设置时使用中控背景图</p></div><label class="upload-button">上传背景图<input id="welcome-background-file" type="file" accept="image/*"/></label><button id="clear-welcome-background">移除</button></div><div class="media-setting"><div><strong>欢迎词音频</strong><p id="welcome-audio-state">仅支持MP3或WAV；播放完成后进入首页</p></div><label class="upload-button">上传音频<input id="welcome-audio-file" type="file" accept="audio/mpeg,audio/wav,.mp3,.wav"/></label><button id="clear-welcome-audio">移除</button></div></div></section>
     <section class="ui-config-card"><div class="ui-config-title"><div><strong>大屏待机界面</strong><p>支持纯色、1920×1080 图片或无停顿循环视频；每段讲解结束后自动返回。</p></div><span>大屏界面 · 1920×1080</span></div><div class="ui-fields"><label>主标题<input id="led-title" value="${escapeHtml(config.ledTitle)}"/></label><label>提示文字<input id="led-subtitle" value="${escapeHtml(config.ledSubtitle)}"/></label><div class="field-row colors"><label>背景颜色<input id="led-bg-color" type="color" value="${escapeHtml(config.ledBackgroundColor)}"/></label><div class="visibility-options"><label class="check-field"><input id="led-show-branding" type="checkbox" ${config.ledShowBranding?'checked':''}/>叠加标题文字</label><label class="check-field"><input id="led-show-status" type="checkbox" ${config.ledShowStatus?'checked':''}/>显示在线状态</label></div></div><div class="media-setting"><div><strong>待机素材</strong><p>${config.ledIdleMediaUrl?`${config.ledIdleMediaKind==='video'?'循环视频':'背景图片'} · 已设置`:'仅接受 1920×1080，未设置时使用纯色待机页'}</p></div><label class="upload-button">上传图片<input id="led-image-file" type="file" accept="image/*"/></label><label class="upload-button">上传视频<input id="led-video-file" type="file" accept="video/*,.mov,.mkv,.webm"/></label><button id="clear-led-media">移除</button></div></div></section>
     <div id="ui-upload-progress" class="upload-progress"><span></span></div><footer class="editor-footer"><span>界面配置独立发布，不会修改讲解内容版本。</span><button id="cancel-ui">取消</button><button id="save-ui" class="primary">发布界面配置</button></footer></div></section>`
   document.body.appendChild(modal)
@@ -523,7 +527,10 @@ function openUiEditor(): void {
   config.ledElements ??= []
   config.welcome ??= { audioEnabled: true, captions: [] }
   const advanced = document.createElement('section'); advanced.className = 'ui-config-card ui-advanced-card'
-  advanced.innerHTML = `<div class="ui-config-title"><div><strong>页面模板与元素</strong><p>使用受控模板编辑页面结构；业务流程和安全操作不会被隐藏。</p></div><span>安全配置</span></div><div class="ui-fields"><div class="field-row"><label>中控首页模板<select id="touch-template"><option value="module-kiosk">板块点播（推荐）</option><option value="hero-routes">主视觉与常用路线</option><option value="routes-grid">路线网格</option></select></label><label>大屏待机模板<select id="led-template"><option value="idle-media">品牌待机</option><option value="idle-minimal">极简待机</option></select></label></div><div class="visibility-options"><label class="check-field"><input id="touch-show-hero" type="checkbox"/>显示首页主视觉</label><label class="check-field"><input id="touch-show-status" type="checkbox"/>显示系统状态面板</label><label class="check-field"><input id="touch-show-quick" type="checkbox"/>显示快速接待</label></div><div class="field-row"><label>首页主视觉标题<input id="touch-hero-title" maxlength="200"/></label><label>首页主视觉说明<input id="touch-hero-subtitle" maxlength="200"/></label></div><div class="field-row"><label>大屏待机标题<input id="led-idle-title" maxlength="200"/></label><label>大屏待机提示<input id="led-idle-subtitle" maxlength="200"/></label></div></div>`
+  const touchTemplateField = showRouteBasedTouchTemplates()
+    ? '<label>中控首页模板<select id="touch-template"><option value="module-kiosk">板块点播（推荐）</option><option value="hero-routes">主视觉与常用路线</option><option value="routes-grid">路线网格</option></select></label>'
+    : '<label>中控首页模板<input value="板块点播" readonly/></label>'
+  advanced.innerHTML = `<div class="ui-config-title"><div><strong>页面模板与元素</strong><p>使用受控模板编辑页面结构；业务流程和安全操作不会被隐藏。</p></div><span>安全配置</span></div><div class="ui-fields"><div class="field-row">${touchTemplateField}<label>大屏待机模板<select id="led-template"><option value="idle-media">品牌待机</option><option value="idle-minimal">极简待机</option></select></label></div><div class="visibility-options"><label class="check-field"><input id="touch-show-hero" type="checkbox"/>显示首页主视觉</label><label class="check-field"><input id="touch-show-status" type="checkbox"/>显示系统状态面板</label><label class="check-field"><input id="touch-show-quick" type="checkbox"/>显示快速接待</label></div><div class="field-row"><label>首页主视觉标题<input id="touch-hero-title" maxlength="200"/></label><label>首页主视觉说明<input id="touch-hero-subtitle" maxlength="200"/></label></div><div class="field-row"><label>大屏待机标题<input id="led-idle-title" maxlength="200"/></label><label>大屏待机提示<input id="led-idle-subtitle" maxlength="200"/></label></div></div>`
   modal.querySelector('.ui-editor-body')?.insertBefore(advanced, modal.querySelector('.editor-footer'))
   const findElement = (items: UiElementOverride[], key: string) => items.find(item => item.key === key)
   const setField = (id: string, value: string | undefined | null) => { const input = modal.querySelector<HTMLInputElement>(id); if (input) input.value = value ?? '' }
@@ -557,11 +564,13 @@ function openUiEditor(): void {
   const welcomeBackgroundState = modal.querySelector<HTMLElement>('#welcome-background-state'); if (welcomeBackgroundState) welcomeBackgroundState.textContent = welcomeBackground?.assetUrl ? '已设置独立欢迎页背景图' : '未设置时使用中控背景图'
   const welcomeAudioState = modal.querySelector<HTMLElement>('#welcome-audio-state'); if (welcomeAudioState) welcomeAudioState.textContent = welcomeAudio?.assetUrl ? '已设置欢迎词音频' : '未设置时触碰后直接进入首页'
   const layout = config.layout
-  setField('#touch-template', layout.touchTemplate); setField('#led-template', layout.ledTemplate)
+  if (showRouteBasedTouchTemplates()) setField('#touch-template', layout.touchTemplate)
+  setField('#led-template', layout.ledTemplate)
   setChecked('#touch-show-hero', layout.touchShowHero); setChecked('#touch-show-status', layout.touchShowStatusPanel); setChecked('#touch-show-quick', layout.touchShowQuickActions)
   const upsertElement = (items: UiElementOverride[], key: string, text: string) => { const existing = findElement(items, key); if (existing) existing.text = text || null; else items.push({ key, text: text || null, visible: true }) }
   const syncAdvanced = () => {
-    layout.touchTemplate = (modal.querySelector<HTMLSelectElement>('#touch-template')?.value as NonNullable<UiExperienceConfig['layout']>['touchTemplate']) ?? 'hero-routes'
+    const touchTemplate = modal.querySelector<HTMLSelectElement>('#touch-template')
+    if (touchTemplate) layout.touchTemplate = touchTemplate.value as NonNullable<UiExperienceConfig['layout']>['touchTemplate']
     layout.ledTemplate = (modal.querySelector<HTMLSelectElement>('#led-template')?.value as NonNullable<UiExperienceConfig['layout']>['ledTemplate']) ?? 'idle-media'
     layout.touchShowHero = !!modal.querySelector<HTMLInputElement>('#touch-show-hero')?.checked
     layout.touchShowStatusPanel = !!modal.querySelector<HTMLInputElement>('#touch-show-status')?.checked
@@ -635,6 +644,11 @@ async function validateLedIdleMediaFile(file: File, video: boolean): Promise<voi
 }
 async function uploadUiElementAsset(input: HTMLInputElement, key: string, touch: boolean, modal: HTMLElement, kind: AssetKind = 1, label = '界面素材'): Promise<void> {
   const file = input.files?.[0]; if (!file || !uiConfig) return
+  if (key === 'welcome.audio' && !/\.(mp3|wav)$/i.test(file.name)) {
+    showToast('欢迎词仅支持MP3或WAV格式，请转换后重新上传。')
+    input.value = ''
+    return
+  }
   const progress = modal.querySelector<HTMLElement>('#ui-upload-progress'); progress?.classList.add('visible')
   try {
     const asset = await api.uploadAsset(file, kind, 0, percent => { const bar = progress?.querySelector<HTMLElement>('span'); if (bar) bar.style.width = `${percent}%` })

@@ -39,6 +39,7 @@ VersionInfoProductName=TG智慧展厅服务端
 Name: "chinesesimp"; MessagesFile: "ChineseSimplified.isl"
 
 [Files]
+Source: "{#SourceRoot}\Tools\Stop-TGServerForUpgrade.ps1"; Flags: dontcopy
 Source: "{#SourceRoot}\Server\*"; DestDir: "{app}\Server"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#SourceRoot}\TtsWorker\*"; DestDir: "{app}\TtsWorker"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#SourceRoot}\Tools\*"; DestDir: "{app}\Tools"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -70,13 +71,22 @@ var
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
+  PowerShellPath: String;
+  Parameters: String;
 begin
   Result := '';
-  if RegKeyExists(HKLM64, 'SYSTEM\CurrentControlSet\Services\TG Exhibition Control Server') then
+  if RegKeyExists(HKLM64, 'SYSTEM\CurrentControlSet\Services\TG Exhibition Control Server') or
+     FileExists(ExpandConstant('{app}\Server\TG.Control.Server.exe')) then
   begin
-    Exec(ExpandConstant('{sys}\sc.exe'), 'stop "TG Exhibition Control Server"', '',
-      SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    Sleep(5000);
+    ExtractTemporaryFile('Stop-TGServerForUpgrade.ps1');
+    PowerShellPath := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+    Parameters := '-NoProfile -ExecutionPolicy Bypass -File "' +
+      ExpandConstant('{tmp}\Stop-TGServerForUpgrade.ps1') + '" -InstallRoot "' +
+      ExpandConstant('{app}') + '"';
+    if (not Exec(PowerShellPath, Parameters, '', SW_HIDE, ewWaitUntilTerminated, ResultCode)) or
+       (ResultCode <> 0) then
+      Result := '无法停止旧版服务端或语音进程，请重启服务器后重新安装。错误代码：' +
+        IntToStr(ResultCode);
   end;
 end;
 
