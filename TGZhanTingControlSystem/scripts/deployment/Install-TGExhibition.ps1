@@ -125,7 +125,10 @@ if ($existingConfigFiles) {
 }
 
 $terminalKey = New-RandomSecret 32
-$adminPassword = New-RandomSecret 18
+# The field deployment uses the fixed administrator credential requested for
+# this product. Keep the password hash in server.site.json; this clear value is
+# only used while creating the PBKDF2 hash and the first-install handoff note.
+$adminPassword = 'tg001'
 $certificate = Ensure-HttpsCertificate
 $certificateFindSubject = Get-CertificateFindSubject $CertificateSubject
 $serverBaseUrl = "https://${ServerHostName}:$ServerPort"
@@ -151,7 +154,7 @@ $serverConfig = [ordered]@{
         MinAudioSizeBytes = 45; MaxAudioSizeBytes = 104857600
     }
     MeloTtsLocal = @{
-        Enabled = $true; AutoStartWorker = $true; BaseAddress = 'http://127.0.0.1:5091'
+        Enabled = $false; AutoStartWorker = $false; BaseAddress = 'http://127.0.0.1:5091'
         PythonExecutablePath = (Join-Path $install 'TtsWorker\MeloTtsLocal\runtime\python.exe')
         WorkerScriptPath = (Join-Path $install 'TtsWorker\MeloTtsLocal\worker.py')
         MeloTtsSourcePath = (Join-Path $install 'TtsWorker\MeloTtsLocal\vendor\MeloTTS')
