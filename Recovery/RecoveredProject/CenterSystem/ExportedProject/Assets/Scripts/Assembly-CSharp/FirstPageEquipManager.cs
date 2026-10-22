@@ -287,6 +287,15 @@ public class FirstPageEquipManager : MonoBehaviour
 		TogArrEquipClose = base.transform.Find("equipKindsSrollviewClose/Viewport/Content").GetComponentsInChildren<Toggle>();
 		TogArrLightOpen = base.transform.Find("lightKindsSrollview/Viewport/ContentOpen").GetComponentsInChildren<Toggle>();
 		TogArrLightClose = base.transform.Find("lightKindsSrollview/Viewport/ContentClose").GetComponentsInChildren<Toggle>();
+		AttachToggleDiagnostics(TogArrEquip, "EQUIPMENT_OPEN");
+		AttachToggleDiagnostics(TogArrEquipClose, "EQUIPMENT_CLOSE");
+		AttachToggleDiagnostics(TogArrLightOpen, "LIGHT_OPEN");
+		AttachToggleDiagnostics(TogArrLightClose, "LIGHT_CLOSE");
+		ControlDiagnostics.Record("UI", "CONTROL_TOGGLE_DISCOVERY", name, "OK",
+			"equipmentOpen=" + TogArrEquip.Length +
+			" equipmentClose=" + TogArrEquipClose.Length +
+			" lightOpen=" + TogArrLightOpen.Length +
+			" lightClose=" + TogArrLightClose.Length);
 		AllEquipOpenTog.onValueChanged.AddListener(delegate(bool ison)
 		{
 			if (ison)
@@ -1165,6 +1174,27 @@ public class FirstPageEquipManager : MonoBehaviour
 
 	private void OnDestroy()
 	{
+	}
+
+	private static void AttachToggleDiagnostics(Toggle[] toggles, string action)
+	{
+		if (toggles == null)
+		{
+			return;
+		}
+		for (int i = 0; i < toggles.Length; i++)
+		{
+			Toggle toggle = toggles[i];
+			if (toggle == null)
+			{
+				continue;
+			}
+			string toggleName = toggle.name;
+			toggle.onValueChanged.AddListener(delegate(bool isOn)
+			{
+				ControlDiagnostics.Record("UI", action, toggleName, isOn ? "ON" : "OFF", "active=" + toggle.gameObject.activeInHierarchy + " interactable=" + toggle.interactable);
+			});
+		}
 	}
 
 	private void StartEquipBatch(Toggle[] toggles, Toggle batchToggle)

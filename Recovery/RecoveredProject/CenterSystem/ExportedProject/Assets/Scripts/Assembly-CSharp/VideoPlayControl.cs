@@ -100,7 +100,7 @@ public class VideoPlayControl : MonoBehaviour
 				{
 					EventCenter.BroadCast(Eventdefine.videoplay2, SoftWareManager.ChoiceVideoName);
 				}
-				Debug.LogError("aaaaaa:" + SoftWareManager.ChoiceVideoName);
+				Debug.LogError("开始播放:" + SoftWareManager.ChoiceVideoName);
 				EventCenter.BroadCast(Eventdefine.videoplay, SoftWareManager.ChoiceVideoName);
 				if (SoftWareManager.ChoiceVideoName == "3A" || SoftWareManager.ChoiceVideoName == "tgscene" || SoftWareManager.ChoiceVideoName == "tgdo")
 				{
@@ -129,10 +129,12 @@ public class VideoPlayControl : MonoBehaviour
 			}
 			else
 			{
-				EventCenter.BroadCast(Eventdefine.videoplay, SoftWareManager.ChoiceVideoName);
+                Debug.LogError("从暂停转为播放:" + SoftWareManager.ChoiceVideoName);
+                EventCenter.BroadCast(Eventdefine.videoplay, SoftWareManager.ChoiceVideoName);
 				if (base.transform.GetComponent<UDPClient2>() != null)
-				{
-					EventCenter.BroadCast(Eventdefine.videoplay2, SoftWareManager.ChoiceVideoName);
+                {
+                    Debug.LogError("从暂停转为播放udpClient2:" + SoftWareManager.ChoiceVideoName);
+                    EventCenter.BroadCast(Eventdefine.videoplay2, SoftWareManager.ChoiceVideoName);
 				}
 			}
 		});

@@ -59,16 +59,18 @@ public class WakeUpComputer : MonoBehaviour
 
 	private static bool SendMagicPackets(string mac, IPAddress configuredBroadcast, int repeats)
 	{
+		string commandId = ControlDiagnostics.NewCommandId("WOL");
 		if (string.IsNullOrWhiteSpace(mac) || !MacCheckRegex.IsMatch(mac.Trim()))
 		{
 			UnityEngine.Debug.LogError("网络唤醒 MAC 地址格式无效: " + mac);
-			ControlDiagnostics.Record("WOL", "MAGIC_PACKET", mac, "INVALID", "MAC format");
+			ControlDiagnostics.RecordCommand(commandId, "WOL", "MAGIC_PACKET", mac, "INVALID", "MAC format");
 			return false;
 		}
 
 		byte[] packet = BuildMagicPacket(ParseMac(mac));
 		List<IPAddress> destinations = GetBroadcastDestinations(configuredBroadcast);
 		bool sentAny = false;
+		ControlDiagnostics.RecordCommand(commandId, "WOL", "MAGIC_PACKET", mac, "STARTED", "destinations=" + string.Join(",", destinations) + " repeats=" + repeats);
 
 		foreach (IPAddress destination in destinations)
 		{
@@ -86,13 +88,13 @@ public class WakeUpComputer : MonoBehaviour
 							client.Send(packet, packet.Length, endpoint);
 							sentAny = true;
 						}
-						ControlDiagnostics.Record("WOL", "MAGIC_PACKET", destination + ":" + wakePort, "SENT", mac + " repeats=" + repeats);
+						ControlDiagnostics.RecordCommand(commandId, "WOL", "MAGIC_PACKET", destination + ":" + wakePort, "SOCKET_OK", mac + " repeats=" + repeats);
 					}
 				}
 				catch (Exception ex)
 				{
 					UnityEngine.Debug.LogWarning("网络唤醒发送失败 " + destination + ":" + wakePort + " " + ex.Message);
-					ControlDiagnostics.Record("WOL", "MAGIC_PACKET", destination + ":" + wakePort, "FAILED", mac + " " + ex.Message);
+					ControlDiagnostics.RecordCommand(commandId, "WOL", "MAGIC_PACKET", destination + ":" + wakePort, "FAILED", mac + " " + ex.Message);
 				}
 			}
 		}
@@ -101,6 +103,7 @@ public class WakeUpComputer : MonoBehaviour
 		{
 			UnityEngine.Debug.Log("网络唤醒魔术包已发送，MAC=" + mac + " 广播目标=" + string.Join(",", destinations));
 		}
+		ControlDiagnostics.RecordCommand(commandId, "WOL", "MAGIC_PACKET", mac, sentAny ? "COMPLETED" : "FAILED", "socket send result only");
 		return sentAny;
 	}
 

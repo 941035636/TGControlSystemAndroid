@@ -248,6 +248,7 @@ public class UDPClient : MonoBehaviour
 	private void videoPlay(string name)
 	{
 		SocketSend("VideoPlay|" + name);
+        Debug.Log("VideoPlay|" + name);
 	}
 
 	private void voicestart()
@@ -349,10 +350,12 @@ public class UDPClient : MonoBehaviour
 	{
 		if (activeClient != this)
 		{
+			ControlDiagnostics.Record("UDP", "INITIALISE", IP + ":" + Port, "IGNORED", "inactive UDPClient instance " + name);
 			return;
 		}
 		try
 		{
+			ControlDiagnostics.Record("UDP", "INITIALISE", IP + ":" + Port, "STARTED", name);
 			CloseTransport();
 			ipEnd = new IPEndPoint(IPAddress.Parse(IP), int.Parse(Port));
 			lastTargetIp = IP;
@@ -368,40 +371,50 @@ public class UDPClient : MonoBehaviour
 			};
 			connectThread.Start();
 			Debug.Log("UDP目标已切换: " + ipEnd);
+			ControlDiagnostics.Record("UDP", "INITIALISE", ipEnd.ToString(), "OK", name);
 		}
 		catch (Exception ex)
 		{
 			Debug.LogError("UDP初始化失败 " + IP + ":" + Port + " " + ex.Message);
+			ControlDiagnostics.Record("UDP", "INITIALISE", IP + ":" + Port, "FAILED", name + " " + ex.Message);
 			CloseTransport();
 		}
 	}
 
 	public void SocketSend(string sendStr)
 	{
+		string commandId = ControlDiagnostics.NewCommandId("UDP");
 		if (activeClient != this)
 		{
+			ControlDiagnostics.RecordCommand(commandId, "UDP", "COMMAND_SEND", ipEnd == null ? string.Empty : ipEnd.ToString(), "IGNORED", "inactive UDPClient instance " + name + " " + sendStr);
 			return;
 		}
 		if (socket == null || ipEnd == null)
 		{
 			Debug.LogWarning("UDP尚未初始化，忽略指令: " + sendStr);
+			ControlDiagnostics.RecordCommand(commandId, "UDP", "COMMAND_SEND", string.Empty, "IGNORED", "transport not initialised " + sendStr);
 			return;
 		}
 		try
 		{
 			sendData = Encoding.ASCII.GetBytes(sendStr);
+			ControlDiagnostics.RecordCommand(commandId, "UDP", "COMMAND_SEND", ipEnd.ToString(), "ATTEMPT", "bytes=" + sendData.Length + " payload=" + sendStr);
 			socket.SendTo(sendData, sendData.Length, SocketFlags.None, ipEnd);
+			ControlDiagnostics.RecordCommand(commandId, "UDP", "COMMAND_SEND", ipEnd.ToString(), "SOCKET_OK", "bytes accepted by socket payload=" + sendStr);
 		}
 		catch (Exception ex)
 		{
 			Debug.LogError("UDP发送失败 " + ipEnd + " 指令=" + sendStr + " " + ex.Message);
+			ControlDiagnostics.RecordCommand(commandId, "UDP", "COMMAND_SEND", ipEnd == null ? string.Empty : ipEnd.ToString(), "FAILED", ex.Message + " payload=" + sendStr);
 		}
 	}
 
 	private void SocketSendDevCode(string code, string ip, string port)
 	{
+		string commandId = ControlDiagnostics.NewCommandId("UDP");
 		if (activeClient != this)
 		{
+			ControlDiagnostics.RecordCommand(commandId, "UDP", "DEVICE_COMMAND_SEND", ip + ":" + port, "IGNORED", "inactive UDPClient instance " + name);
 			return;
 		}
 		try
@@ -413,11 +426,14 @@ public class UDPClient : MonoBehaviour
 				socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 			}
 			Debug.Log("UDP设备指令:" + code + " 目的IP:" + iPEndPoint);
+			ControlDiagnostics.RecordCommand(commandId, "UDP", "DEVICE_COMMAND_SEND", iPEndPoint.ToString(), "ATTEMPT", "bytes=" + array.Length + " raw=" + code);
 			socket.SendTo(array, array.Length, SocketFlags.None, iPEndPoint);
+			ControlDiagnostics.RecordCommand(commandId, "UDP", "DEVICE_COMMAND_SEND", iPEndPoint.ToString(), "SOCKET_OK", "bytes accepted by socket raw=" + code);
 		}
 		catch (Exception ex)
 		{
 			Debug.LogError("UDP设备指令发送失败: " + ex.Message);
+			ControlDiagnostics.RecordCommand(commandId, "UDP", "DEVICE_COMMAND_SEND", ip + ":" + port, "FAILED", ex.Message + " raw=" + code);
 		}
 	}
 
@@ -450,12 +466,14 @@ public class UDPClient : MonoBehaviour
 				}
 				recvLen = currentSocket.ReceiveFrom(recvData, ref serverEnd);
 				recvStr = Encoding.ASCII.GetString(recvData, 0, recvLen);
+				ControlDiagnostics.Record("UDP", "RECEIVE", serverEnd == null ? string.Empty : serverEnd.ToString(), "UNMATCHED", "bytes=" + recvLen + " payload=" + recvStr);
 			}
 			catch (SocketException ex)
 			{
 				if (receiveRunning)
 				{
 					Debug.LogWarning("UDP接收中断: " + ex.Message);
+					ControlDiagnostics.Record("UDP", "RECEIVE", serverEnd == null ? string.Empty : serverEnd.ToString(), "FAILED", ex.Message);
 				}
 				break;
 			}
@@ -506,6 +524,8 @@ public class UDPClient : MonoBehaviour
 
 	private void CloseTransport()
 	{
+		string closingTarget = ipEnd == null ? string.Empty : ipEnd.ToString();
+		bool hadTransport = socket != null || ipEnd != null || connectThread != null;
 		receiveRunning = false;
 		Socket currentSocket = socket;
 		socket = null;
@@ -525,5 +545,9 @@ public class UDPClient : MonoBehaviour
 		}
 		connectThread = null;
 		ipEnd = null;
+		if (hadTransport)
+		{
+			ControlDiagnostics.Record("UDP", "CLOSE", closingTarget, "OK", name);
+		}
 	}
 }

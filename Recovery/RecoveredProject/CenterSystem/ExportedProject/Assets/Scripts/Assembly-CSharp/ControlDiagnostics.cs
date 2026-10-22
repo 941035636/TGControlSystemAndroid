@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using UnityEngine;
 
 public static class ControlDiagnostics
@@ -12,17 +13,28 @@ public static class ControlDiagnostics
 
 	private static string logPath;
 
+	private static string sessionId = string.Empty;
+
+	private static long sequence;
+
+	private static readonly System.Diagnostics.Stopwatch SessionClock = new System.Diagnostics.Stopwatch();
+
 	private const int MaximumPendingLines = 5000;
 
 	public static string LogPath => logPath;
 
+	public static string SessionId => sessionId;
+
 	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 	private static void Initialise()
 	{
+		sessionId = DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+		sequence = 0L;
+		SessionClock.Restart();
 		string folder = Path.Combine(Application.persistentDataPath, "ControlDiagnostics");
 		Directory.CreateDirectory(folder);
-		logPath = Path.Combine(folder, "control-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".tsv");
-		File.WriteAllText(logPath, "time\tcategory\taction\ttarget\tresult\tdetail" + Environment.NewLine, Encoding.UTF8);
+		logPath = Path.Combine(folder, "control-" + sessionId + ".tsv");
+		File.WriteAllText(logPath, "time\telapsed_ms\tsession_id\tsequence\tthread_id\tcommand_id\tcategory\taction\ttarget\tresult\tdetail" + Environment.NewLine, Encoding.UTF8);
 
 		GameObject writerObject = new GameObject("ControlDiagnosticsWriter")
 		{
@@ -35,7 +47,23 @@ public static class ControlDiagnostics
 
 	public static void Record(string category, string action, string target, string result, string detail)
 	{
+		RecordCommand(string.Empty, category, action, target, result, detail);
+	}
+
+	public static string NewCommandId(string protocol)
+	{
+		long value = Interlocked.Increment(ref sequence);
+		string prefix = string.IsNullOrWhiteSpace(protocol) ? "CMD" : protocol.Trim().ToUpperInvariant();
+		return prefix + "-" + sessionId + "-" + value.ToString("D6");
+	}
+
+	public static void RecordCommand(string commandId, string category, string action, string target, string result, string detail)
+	{
+		long lineSequence = Interlocked.Increment(ref sequence);
+		long elapsedMilliseconds = SessionClock.IsRunning ? SessionClock.ElapsedMilliseconds : 0L;
 		string line = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + "\t" +
+			elapsedMilliseconds + "\t" + Clean(sessionId) + "\t" + lineSequence + "\t" +
+			Thread.CurrentThread.ManagedThreadId + "\t" + Clean(commandId) + "\t" +
 			Clean(category) + "\t" + Clean(action) + "\t" + Clean(target) + "\t" +
 			Clean(result) + "\t" + Clean(detail);
 		lock (QueueLock)
@@ -98,11 +126,14 @@ internal sealed class ControlDiagnosticsWriter : MonoBehaviour
 
 	private void OnApplicationPause(bool paused)
 	{
-		if (paused)
-		{
-			ControlDiagnostics.Record("SYSTEM", "APPLICATION_PAUSE", string.Empty, "OK", string.Empty);
-			ControlDiagnostics.Flush();
-		}
+		ControlDiagnostics.Record("SYSTEM", paused ? "APPLICATION_PAUSE" : "APPLICATION_RESUME", Application.internetReachability.ToString(), "OK", string.Empty);
+		ControlDiagnostics.Flush();
+	}
+
+	private void OnApplicationFocus(bool hasFocus)
+	{
+		ControlDiagnostics.Record("SYSTEM", hasFocus ? "APPLICATION_FOCUS_GAINED" : "APPLICATION_FOCUS_LOST", Application.internetReachability.ToString(), "OK", string.Empty);
+		ControlDiagnostics.Flush();
 	}
 
 	private void OnApplicationQuit()

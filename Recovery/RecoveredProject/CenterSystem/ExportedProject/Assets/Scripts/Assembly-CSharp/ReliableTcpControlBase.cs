@@ -63,6 +63,8 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 
 	private sealed class PendingCommand
 	{
+		public string CommandId;
+
 		public string Hex;
 
 		public string TargetIp;
@@ -178,9 +180,11 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 
 	private void Enqueue(string message, string targetIp, float delayAfter)
 	{
+		string commandId = ControlDiagnostics.NewCommandId("TCP");
 		if (string.IsNullOrWhiteSpace(message))
 		{
 			Debug.LogError(controllerName + "忽略空指令");
+			ControlDiagnostics.RecordCommand(commandId, "TCP", "COMMAND_QUEUE", targetIp, "INVALID", controllerName + " empty command");
 			return;
 		}
 
@@ -191,16 +195,18 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 		catch (Exception ex)
 		{
 			Debug.LogError(controllerName + "指令格式错误: " + ex.Message + " 指令=" + message);
+			ControlDiagnostics.RecordCommand(commandId, "TCP", "COMMAND_QUEUE", targetIp, "INVALID", controllerName + " " + ex.Message + " " + message);
 			return;
 		}
 
 		commandQueue.Enqueue(new PendingCommand
 		{
+			CommandId = commandId,
 			Hex = message,
 			TargetIp = string.IsNullOrWhiteSpace(targetIp) ? host : targetIp.Trim(),
 			DelayAfter = delayAfter
 		});
-		ControlDiagnostics.Record("TCP", "COMMAND_QUEUE", (string.IsNullOrWhiteSpace(targetIp) ? host : targetIp.Trim()) + ":" + port, "QUEUED", controllerName + " " + message);
+		ControlDiagnostics.RecordCommand(commandId, "TCP", "COMMAND_QUEUE", (string.IsNullOrWhiteSpace(targetIp) ? host : targetIp.Trim()) + ":" + port, "QUEUED", controllerName + " " + message);
 
 		if (string.IsNullOrWhiteSpace(host) && !string.IsNullOrWhiteSpace(targetIp))
 		{
@@ -237,7 +243,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 					if (command.Attempts >= Mathf.Max(1, maxSendAttempts))
 					{
 						Debug.LogError(controllerName + "指令发送失败，已达到重试上限: " + command.Hex);
-						ControlDiagnostics.Record("TCP", "CONNECT", host + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
+						ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "CONNECT", host + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
 						commandQueue.Dequeue();
 						break;
 					}
@@ -259,6 +265,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 				continue;
 			}
 
+			ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "ATTEMPT", controllerName + " attempt=" + (command.Attempts + 1) + " " + command.Hex);
 			SendResult result = BeginSend(activeSocket, HexStringToBytes(command.Hex));
 			float sendStarted = Time.realtimeSinceStartup;
 			while (!result.Completed && Time.realtimeSinceStartup - sendStarted < Mathf.Max(0.5f, sendTimeoutSeconds))
@@ -269,7 +276,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			if (result.Completed && result.Success)
 			{
 				Debug.Log(controllerName + "发送成功 IP:" + command.TargetIp + " 指令:" + command.Hex);
-				ControlDiagnostics.Record("TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "OK", controllerName + " " + command.Hex);
+				ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "SOCKET_OK", controllerName + " bytes accepted by socket " + command.Hex);
 				commandQueue.Dequeue();
 				yield return new WaitForSecondsRealtime(Mathf.Max(command.DelayAfter, commandIntervalSeconds));
 				continue;
@@ -277,12 +284,12 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 
 			command.Attempts++;
 			Debug.LogWarning(controllerName + "发送失败，准备重连重试: " + (result.Error ?? "发送超时"));
-			ControlDiagnostics.Record("TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "RETRY", controllerName + " " + (result.Error ?? "timeout") + " " + command.Hex);
+			ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "RETRY", controllerName + " " + (result.Error ?? "timeout") + " " + command.Hex);
 			ResetConnection();
 			if (command.Attempts >= Mathf.Max(1, maxSendAttempts))
 			{
 				Debug.LogError(controllerName + "指令发送失败，已达到重试上限: " + command.Hex);
-				ControlDiagnostics.Record("TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
+				ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
 				commandQueue.Dequeue();
 			}
 			yield return new WaitForSecondsRealtime(0.3f);
@@ -420,7 +427,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			}
 			string receivedHex = BytesToHex(state.Buffer, count);
 			Debug.Log(controllerName + "接收: " + receivedHex);
-			ControlDiagnostics.Record("TCP", "RECEIVE", connectedHost + ":" + connectedPort, "OK", controllerName + " " + receivedHex);
+			ControlDiagnostics.Record("TCP", "RECEIVE", connectedHost + ":" + connectedPort, "UNMATCHED", controllerName + " bytes=" + count + " raw=" + receivedHex);
 			state.Socket.BeginReceive(state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveCallback, state);
 		}
 		catch (Exception ex)
