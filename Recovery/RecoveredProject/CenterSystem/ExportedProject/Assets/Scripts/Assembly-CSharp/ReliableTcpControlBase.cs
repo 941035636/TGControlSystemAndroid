@@ -49,6 +49,8 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 
 	private bool shuttingDown;
 
+	private bool applicationSuspended;
+
 	private int connectionGeneration;
 
 	private Coroutine commandCoroutine;
@@ -123,6 +125,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 		this.sendSingleEvent = sendSingleEvent;
 		this.controllerName = controllerName;
 		shuttingDown = false;
+		applicationSuspended = false;
 		EventCenter.addlistener<string, int>(connectEvent, Connect);
 		EventCenter.addlistener<string, string, string>(sendEvent, Send);
 		EventCenter.addlistener<string, string>(sendSingleEvent, SendSingleCode);
@@ -176,6 +179,39 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 	public void DisConnect()
 	{
 		CloseAllSockets();
+	}
+
+	protected void SetApplicationSuspended(bool suspended)
+	{
+		if (applicationSuspended == suspended)
+		{
+			return;
+		}
+
+		applicationSuspended = suspended;
+		if (suspended)
+		{
+			ControlDiagnostics.Record("TCP", "APPLICATION_SUSPEND", host + ":" + port, "CLOSED", controllerName + " queued=" + commandQueue.Count);
+			ResetConnection();
+			return;
+		}
+
+		ControlDiagnostics.Record("TCP", "APPLICATION_RESUME", host + ":" + port, "RECONNECTING", controllerName + " queued=" + commandQueue.Count);
+		EnsureConnection();
+	}
+
+	private void OnApplicationPause(bool paused)
+	{
+		SetApplicationSuspended(paused);
+	}
+
+	private void OnApplicationFocus(bool hasFocus)
+	{
+		if (hasFocus && !applicationSuspended && !string.IsNullOrWhiteSpace(host) && port > 0 && GetActiveSocket() == null)
+		{
+			ControlDiagnostics.Record("TCP", "APPLICATION_FOCUS_RECOVERY", host + ":" + port, "RECONNECTING", controllerName + " queued=" + commandQueue.Count);
+			EnsureConnection();
+		}
 	}
 
 	private void Enqueue(string message, string targetIp, float delayAfter)
@@ -235,6 +271,12 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			EnsureConnection();
 			while (!shuttingDown && !IsConnectedTo(command.TargetIp))
 			{
+				if (applicationSuspended)
+				{
+					waitStarted = Time.realtimeSinceStartup;
+					yield return new WaitForSecondsRealtime(0.1f);
+					continue;
+				}
 				if (Time.realtimeSinceStartup - waitStarted >= Mathf.Max(0.5f, connectTimeoutSeconds))
 				{
 					Debug.LogWarning(controllerName + "连接超时，准备重连: " + host + ":" + port);
@@ -298,7 +340,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 
 	private void EnsureConnection()
 	{
-		if (shuttingDown || string.IsNullOrWhiteSpace(host) || port <= 0)
+		if (shuttingDown || applicationSuspended || string.IsNullOrWhiteSpace(host) || port <= 0)
 		{
 			return;
 		}

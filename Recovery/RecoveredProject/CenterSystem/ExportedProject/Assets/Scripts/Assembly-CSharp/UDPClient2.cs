@@ -29,6 +29,12 @@ public class UDPClient2 : MonoBehaviour
 
 	private volatile bool receiveRunning;
 
+	private bool applicationSuspended;
+
+	private string lastTargetIp = string.Empty;
+
+	private string lastTargetPort = string.Empty;
+
 	private static UDPClient2 activeClient;
 
 	private static MyUDPClient Instance;
@@ -70,11 +76,13 @@ public class UDPClient2 : MonoBehaviour
 
 	private void OnEnable()
 	{
+		applicationSuspended = false;
 		if (activeClient != null && activeClient != this)
 		{
 			activeClient.CloseTransport();
 		}
 		activeClient = this;
+		RestoreTransport("COMPONENT_ENABLE");
 	}
 
 	private void OnDestroy()
@@ -234,6 +242,8 @@ public class UDPClient2 : MonoBehaviour
 		{
 			CloseTransport();
 			ipEnd = new IPEndPoint(IPAddress.Parse(IP), int.Parse(Port));
+			lastTargetIp = IP;
+			lastTargetPort = Port;
 			socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 			serverEnd = new IPEndPoint(IPAddress.Any, 0);
 			receiveRunning = true;
@@ -308,8 +318,48 @@ public class UDPClient2 : MonoBehaviour
 	{
 		if (activeClient == this)
 		{
+			lastTargetIp = string.Empty;
+			lastTargetPort = string.Empty;
 			CloseTransport();
 		}
+	}
+
+	private void OnApplicationPause(bool paused)
+	{
+		if (activeClient != this || applicationSuspended == paused)
+		{
+			return;
+		}
+
+		applicationSuspended = paused;
+		if (paused)
+		{
+			ControlDiagnostics.Record("UDP2", "APPLICATION_SUSPEND", lastTargetIp + ":" + lastTargetPort, "CLOSED", name);
+			CloseTransport();
+			return;
+		}
+
+		RestoreTransport("APPLICATION_RESUME");
+	}
+
+	private void OnApplicationFocus(bool hasFocus)
+	{
+		if (hasFocus && activeClient == this && !applicationSuspended && (socket == null || !receiveRunning))
+		{
+			RestoreTransport("APPLICATION_FOCUS_RECOVERY");
+		}
+	}
+
+	private void RestoreTransport(string action)
+	{
+		if (string.IsNullOrWhiteSpace(lastTargetIp) || string.IsNullOrWhiteSpace(lastTargetPort) ||
+			(socket != null && receiveRunning))
+		{
+			return;
+		}
+
+		ControlDiagnostics.Record("UDP2", action, lastTargetIp + ":" + lastTargetPort, "REINITIALISING", name);
+		InitSocket(lastTargetIp, lastTargetPort);
 	}
 
 	private void CloseTransport()

@@ -30,6 +30,8 @@ public class UDPClient : MonoBehaviour
 
 	private volatile bool receiveRunning;
 
+	private bool applicationSuspended;
+
 	private static readonly List<UDPClient> Clients = new List<UDPClient>();
 
 	private static UDPClient activeClient;
@@ -58,6 +60,7 @@ public class UDPClient : MonoBehaviour
 	private void OnEnable()
 	{
 		applicationQuitting = false;
+		applicationSuspended = false;
 		_shotctl = gameObject;
 		if (!Clients.Contains(this))
 		{
@@ -520,6 +523,46 @@ public class UDPClient : MonoBehaviour
 	{
 		applicationQuitting = true;
 		CloseTransport();
+	}
+
+	private void OnApplicationPause(bool paused)
+	{
+		if (activeClient != this || applicationSuspended == paused)
+		{
+			return;
+		}
+
+		applicationSuspended = paused;
+		if (paused)
+		{
+			ControlDiagnostics.Record("UDP", "APPLICATION_SUSPEND", lastTargetIp + ":" + lastTargetPort, "CLOSED", name);
+			CloseTransport();
+			return;
+		}
+
+		RestoreTransportAfterResume("APPLICATION_RESUME");
+	}
+
+	private void OnApplicationFocus(bool hasFocus)
+	{
+		if (hasFocus && activeClient == this && !applicationSuspended &&
+			!string.IsNullOrWhiteSpace(lastTargetIp) && !string.IsNullOrWhiteSpace(lastTargetPort) &&
+			(socket == null || !receiveRunning))
+		{
+			RestoreTransportAfterResume("APPLICATION_FOCUS_RECOVERY");
+		}
+	}
+
+	private void RestoreTransportAfterResume(string action)
+	{
+		if (applicationQuitting || string.IsNullOrWhiteSpace(lastTargetIp) || string.IsNullOrWhiteSpace(lastTargetPort))
+		{
+			ControlDiagnostics.Record("UDP", action, lastTargetIp + ":" + lastTargetPort, "SKIPPED", name + " no previous target");
+			return;
+		}
+
+		ControlDiagnostics.Record("UDP", action, lastTargetIp + ":" + lastTargetPort, "REINITIALISING", name);
+		InitSocket(lastTargetIp, lastTargetPort);
 	}
 
 	private void CloseTransport()

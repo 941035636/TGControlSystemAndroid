@@ -20,6 +20,11 @@ internal sealed class TestTcpController : ReliableTcpControlBase
 		Shutdown();
 	}
 
+	public void SetSuspendedForTest(bool suspended)
+	{
+		SetApplicationSuspended(suspended);
+	}
+
 	public Coroutine QueueCoroutine => LastStartedCoroutine;
 }
 
@@ -32,6 +37,7 @@ internal static class Program
 			("connect-and-immediate-queue", TestImmediateQueue),
 			("open-close-order", TestOpenCloseOrder),
 			("disconnect-and-reconnect", TestReconnect),
+			("application-suspend-and-resume", TestApplicationSuspendAndResume),
 			("same-host-port-switch", TestPortSwitch),
 			("rapid-50-command-queue", TestRapidQueue),
 			("wol-magic-packet", TestWakeOnLanPacket)
@@ -101,6 +107,29 @@ internal static class Program
 		controller.Value.SendSingleCode("20 02", "127.0.0.1");
 		using TcpClient secondPeer = await PumpForResult(controller.Value, secondAccept);
 		AssertBytes(new byte[] { 0x20, 0x02 }, await ReadWithPump(controller.Value, secondPeer, 2), "reconnected command");
+	}
+
+	private static async Task TestApplicationSuspendAndResume()
+	{
+		using var listener = StartListener(out int port);
+		using var controller = new ControllerScope();
+		Task<TcpClient> firstAccept = listener.AcceptTcpClientAsync();
+		controller.Value.Connect("127.0.0.1", port);
+		controller.Value.SendSingleCode("41", "127.0.0.1");
+		using (TcpClient firstPeer = await PumpForResult(controller.Value, firstAccept))
+		{
+			AssertBytes(new byte[] { 0x41 }, await ReadWithPump(controller.Value, firstPeer, 1), "command before suspend");
+			controller.Value.SetSuspendedForTest(true);
+		}
+
+		Task<TcpClient> resumedAccept = listener.AcceptTcpClientAsync();
+		controller.Value.SendSingleCode("42", "127.0.0.1");
+		await PumpSteps(controller.Value, 200);
+		Assert(!resumedAccept.IsCompleted, "controller must not reconnect while application is suspended");
+
+		controller.Value.SetSuspendedForTest(false);
+		using TcpClient resumedPeer = await PumpForResult(controller.Value, resumedAccept);
+		AssertBytes(new byte[] { 0x42 }, await ReadWithPump(controller.Value, resumedPeer, 1), "queued command after resume");
 	}
 
 	private static async Task TestPortSwitch()
