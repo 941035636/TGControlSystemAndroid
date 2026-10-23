@@ -235,6 +235,8 @@ public class FirstPageEquipManager : MonoBehaviour
 
 	private readonly Dictionary<Toggle, bool> lightBatchInteractableStates = new Dictionary<Toggle, bool>();
 
+	private readonly Dictionary<string, int> transparentCabinetCommandVersions = new Dictionary<string, int>();
+
 	public EquipArr EquipModeList;
 
 	private IEnumerator RelayConnectTCP()
@@ -662,7 +664,7 @@ public class FirstPageEquipManager : MonoBehaviour
 		{
 			if (ison)
 			{
-				StartCoroutine(ControlCLoseEquip("192.168.86.50"));
+				StartCoroutine(ControlCLoseEquip("1", "192.168.86.50"));
 				Zhangui1Tog.isOn = false;
 			}
 		});
@@ -679,7 +681,7 @@ public class FirstPageEquipManager : MonoBehaviour
 			if (ison)
 			{
 				Zhangui2Tog.isOn = false;
-				StartCoroutine(ControlCLoseEquip("192.168.86.51"));
+				StartCoroutine(ControlCLoseEquip("2", "192.168.86.51"));
 			}
 		});
 		Zhangui3Tog.onValueChanged.AddListener(delegate(bool ison)
@@ -695,7 +697,7 @@ public class FirstPageEquipManager : MonoBehaviour
 			if (ison)
 			{
 				Zhangui3Tog.isOn = false;
-				StartCoroutine(ControlCLoseEquip("192.168.86.52"));
+				StartCoroutine(ControlCLoseEquip("3", "192.168.86.52"));
 			}
 		});
 		Zhangui4Tog.onValueChanged.AddListener(delegate(bool ison)
@@ -711,7 +713,7 @@ public class FirstPageEquipManager : MonoBehaviour
 			if (ison)
 			{
 				Zhangui4Tog.isOn = false;
-				StartCoroutine(ControlCLoseEquip("192.168.86.53"));
+				StartCoroutine(ControlCLoseEquip("4", "192.168.86.53"));
 			}
 		});
 		Zhangui5Tog.onValueChanged.AddListener(delegate(bool ison)
@@ -727,7 +729,7 @@ public class FirstPageEquipManager : MonoBehaviour
 			if (ison)
 			{
 				Zhangui5Tog.isOn = false;
-				StartCoroutine(ControlCLoseEquip("192.168.86.54"));
+				StartCoroutine(ControlCLoseEquip("5", "192.168.86.54"));
 			}
 		});
 	}
@@ -793,14 +795,33 @@ public class FirstPageEquipManager : MonoBehaviour
 		EventCenter.BroadCast(Eventdefine.TcpSendSingle90, RedModelList[0].GetOrder.Close4, RedModelList[0].GetredIp);
 	}
 
-	private IEnumerator ControlCLoseEquip(string ip)
+	private IEnumerator ControlCLoseEquip(string cabinetId, string ip)
 	{
-		yield return ReliableUdpCommandSender.Send("TRANSPARENT_CABINET_SHUTDOWN", ip, 7006, "shutdown");
+		int version = NextTransparentCabinetCommandVersion(cabinetId);
+		yield return ReliableUdpCommandSender.Send("TRANSPARENT_CABINET_SHUTDOWN", ip, 7006, "shutdown",
+			shouldContinue: () => IsCurrentTransparentCabinetCommand(cabinetId, version));
 	}
 
 	private IEnumerator ControlOpenEquip(string code)
 	{
-		yield return ReliableUdpCommandSender.Send("TRANSPARENT_CABINET_WAKE", "192.168.86.40", 7002, "Open" + code);
+		int version = NextTransparentCabinetCommandVersion(code);
+		yield return ReliableUdpCommandSender.Send("TRANSPARENT_CABINET_WAKE", "192.168.86.40", 7002, "Open" + code,
+			shouldContinue: () => IsCurrentTransparentCabinetCommand(code, version));
+	}
+
+	private int NextTransparentCabinetCommandVersion(string cabinetId)
+	{
+		int version;
+		transparentCabinetCommandVersions.TryGetValue(cabinetId, out version);
+		version++;
+		transparentCabinetCommandVersions[cabinetId] = version;
+		return version;
+	}
+
+	private bool IsCurrentTransparentCabinetCommand(string cabinetId, int version)
+	{
+		int currentVersion;
+		return transparentCabinetCommandVersions.TryGetValue(cabinetId, out currentVersion) && currentVersion == version;
 	}
 
 	private IEnumerator XuTingLightOpen()

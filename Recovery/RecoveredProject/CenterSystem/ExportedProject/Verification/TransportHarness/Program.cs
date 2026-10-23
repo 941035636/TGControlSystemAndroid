@@ -39,7 +39,9 @@ internal static class Program
 			("disconnect-and-reconnect", TestReconnect),
 			("application-suspend-and-resume", TestApplicationSuspendAndResume),
 			("modbus-acknowledgement-retry", TestModbusAcknowledgementRetry),
+			("modbus-latest-pending-command-wins", TestModbusLatestPendingCommandWins),
 			("reliable-udp-command-burst", TestReliableUdpCommandBurst),
+			("reliable-udp-superseded-command-cancel", TestReliableUdpSupersededCommandCancel),
 			("same-host-port-switch", TestPortSwitch),
 			("rapid-50-command-queue", TestRapidQueue),
 			("wol-magic-packet", TestWakeOnLanPacket)
@@ -175,6 +177,44 @@ internal static class Program
 			string payload = System.Text.Encoding.ASCII.GetString(received.Buffer);
 			Assert(payload == expected[i], "UDP burst item " + i + " expected=" + expected[i] + " actual=" + payload);
 		}
+	}
+
+	private static async Task TestModbusLatestPendingCommandWins()
+	{
+		byte[] first = Convert.FromHexString("FE050000FF009835");
+		byte[] superseded = Convert.FromHexString("FE0500000000D9C5");
+		byte[] latest = Convert.FromHexString("FE050000FF009835");
+		using var listener = StartListener(out int port);
+		using var controller = new ControllerScope();
+		Task<TcpClient> accepted = listener.AcceptTcpClientAsync();
+		controller.Value.Connect("127.0.0.1", port);
+		controller.Value.SendSingleCode(Convert.ToHexString(first), "127.0.0.1");
+		using TcpClient peer = await PumpForResult(controller.Value, accepted);
+		AssertBytes(first, await ReadWithPump(controller.Value, peer, first.Length), "active Modbus command");
+
+		controller.Value.SendSingleCode(Convert.ToHexString(superseded), "127.0.0.1");
+		controller.Value.SendSingleCode(Convert.ToHexString(latest), "127.0.0.1");
+		await peer.GetStream().WriteAsync(first);
+		AssertBytes(latest, await ReadWithPump(controller.Value, peer, latest.Length, 4000), "latest pending Modbus command");
+		await peer.GetStream().WriteAsync(latest);
+	}
+
+	private static async Task TestReliableUdpSupersededCommandCancel()
+	{
+		using var receiver = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+		int port = ((IPEndPoint)receiver.Client.LocalEndPoint).Port;
+		bool current = true;
+		System.Collections.IEnumerator routine = ReliableUdpCommandSender.Send(
+			"TEST_CANCEL", "127.0.0.1", port, "Open1", 3, 1f, 0f, () => current);
+		Assert(routine.MoveNext(), "UDP sender should pause after registration packet");
+		current = false;
+		Assert(!routine.MoveNext(), "superseded UDP sender should stop before command payload");
+
+		using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		UdpReceiveResult registration = await receiver.ReceiveAsync(cancellation.Token);
+		Assert(System.Text.Encoding.ASCII.GetString(registration.Buffer) == "hello", "UDP cancellation should retain registration packet");
+		await Task.Delay(100);
+		Assert(receiver.Available == 0, "superseded UDP command payload must not be sent");
 	}
 
 	private static async Task TestPortSwitch()

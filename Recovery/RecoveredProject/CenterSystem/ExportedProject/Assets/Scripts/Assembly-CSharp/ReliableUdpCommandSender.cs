@@ -8,7 +8,8 @@ using UnityEngine;
 public static class ReliableUdpCommandSender
 {
 	public static IEnumerator Send(string operation, string targetIp, int targetPort, string payload,
-		int attempts = 3, float registrationDelaySeconds = 1f, float retryIntervalSeconds = 0.3f)
+		int attempts = 3, float registrationDelaySeconds = 1f, float retryIntervalSeconds = 0.3f,
+		Func<bool> shouldContinue = null)
 	{
 		string commandId = ControlDiagnostics.NewCommandId("UDP");
 		if (string.IsNullOrWhiteSpace(targetIp) || targetPort <= 0 || targetPort > 65535 || string.IsNullOrEmpty(payload))
@@ -44,6 +45,12 @@ public static class ReliableUdpCommandSender
 
 			for (int attempt = 1; attempt <= totalAttempts; attempt++)
 			{
+				if (shouldContinue != null && !shouldContinue())
+				{
+					ControlDiagnostics.RecordCommand(commandId, "UDP_RELIABLE", operation, endpoint.ToString(),
+						"CANCELLED", "superseded before attempt=" + attempt + " payload=" + payload);
+					yield break;
+				}
 				if (TrySend(sender, endpoint, payload, commandId, operation, attempt))
 				{
 					successfulSends++;

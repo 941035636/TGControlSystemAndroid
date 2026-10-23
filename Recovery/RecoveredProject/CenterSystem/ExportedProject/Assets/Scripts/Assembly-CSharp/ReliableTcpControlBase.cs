@@ -60,6 +60,8 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 
 	private Coroutine commandCoroutine;
 
+	private PendingCommand activeCommand;
+
 	private PendingAcknowledgement pendingAcknowledgement;
 
 	private Eventdefine connectEvent;
@@ -83,6 +85,8 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 		public int Attempts;
 
 		public float DelayAfter;
+
+		public string CoalesceKey;
 	}
 
 	private sealed class PendingAcknowledgement
@@ -177,6 +181,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			commandCoroutine = null;
 		}
 		commandQueue.Clear();
+		activeCommand = null;
 		CloseAllSockets();
 	}
 
@@ -197,13 +202,13 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 
 	public void Send(string openMessage, string closeMessage, string targetIp)
 	{
-		Enqueue(openMessage, targetIp, 0.3f);
-		Enqueue(closeMessage, targetIp, commandIntervalSeconds);
+		Enqueue(openMessage, targetIp, 0.3f, false);
+		Enqueue(closeMessage, targetIp, commandIntervalSeconds, false);
 	}
 
 	public void SendSingleCode(string message, string targetIp)
 	{
-		Enqueue(message, targetIp, commandIntervalSeconds);
+		Enqueue(message, targetIp, commandIntervalSeconds, true);
 	}
 
 	public void DisConnect()
@@ -244,7 +249,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 		}
 	}
 
-	private void Enqueue(string message, string targetIp, float delayAfter)
+	private void Enqueue(string message, string targetIp, float delayAfter, bool coalesce)
 	{
 		string commandId = ControlDiagnostics.NewCommandId("TCP");
 		if (string.IsNullOrWhiteSpace(message))
@@ -266,15 +271,19 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			return;
 		}
 
-		commandQueue.Enqueue(new PendingCommand
+		string resolvedTargetIp = string.IsNullOrWhiteSpace(targetIp) ? host : targetIp.Trim();
+		PendingCommand pendingCommand = new PendingCommand
 		{
 			CommandId = commandId,
 			Hex = message,
 			Data = commandData,
-			TargetIp = string.IsNullOrWhiteSpace(targetIp) ? host : targetIp.Trim(),
-			DelayAfter = delayAfter
-		});
-		ControlDiagnostics.RecordCommand(commandId, "TCP", "COMMAND_QUEUE", (string.IsNullOrWhiteSpace(targetIp) ? host : targetIp.Trim()) + ":" + port, "QUEUED", controllerName + " " + message);
+			TargetIp = resolvedTargetIp,
+			DelayAfter = delayAfter,
+			CoalesceKey = coalesce ? BuildCoalesceKey(resolvedTargetIp, port, commandData) : null
+		};
+		RemoveSupersededPendingCommands(pendingCommand);
+		commandQueue.Enqueue(pendingCommand);
+		ControlDiagnostics.RecordCommand(commandId, "TCP", "COMMAND_QUEUE", resolvedTargetIp + ":" + port, "QUEUED", controllerName + " " + message);
 
 		if (string.IsNullOrWhiteSpace(host) && !string.IsNullOrWhiteSpace(targetIp))
 		{
@@ -294,6 +303,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			}
 
 			PendingCommand command = commandQueue.Peek();
+			activeCommand = command;
 			if (!string.IsNullOrWhiteSpace(command.TargetIp) && command.TargetIp != host)
 			{
 				host = command.TargetIp;
@@ -318,7 +328,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 					{
 						Debug.LogError(controllerName + "指令发送失败，已达到重试上限: " + command.Hex);
 						ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "CONNECT", host + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
-						commandQueue.Dequeue();
+						RemoveHeadCommand(command);
 						break;
 					}
 					waitStarted = Time.realtimeSinceStartup;
@@ -365,7 +375,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 				{
 					ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "DEVICE_ACK", command.TargetIp + ":" + port, "CONFIRMED", controllerName + " " + acknowledgement.Detail);
 					ClearAcknowledgement(acknowledgement);
-					commandQueue.Dequeue();
+					RemoveHeadCommand(command);
 					yield return new WaitForSecondsRealtime(Mathf.Max(command.DelayAfter, commandIntervalSeconds));
 					continue;
 				}
@@ -379,7 +389,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 				{
 					Debug.LogError(controllerName + " device acknowledgement failed after max attempts: " + command.Hex);
 					ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "DEVICE_ACK", command.TargetIp + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
-					commandQueue.Dequeue();
+					RemoveHeadCommand(command);
 				}
 				yield return new WaitForSecondsRealtime(0.3f);
 				continue;
@@ -389,7 +399,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			{
 				Debug.Log(controllerName + "发送成功 IP:" + command.TargetIp + " 指令:" + command.Hex);
 				ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "SOCKET_OK", controllerName + " bytes accepted by socket " + command.Hex);
-				commandQueue.Dequeue();
+				RemoveHeadCommand(command);
 				yield return new WaitForSecondsRealtime(Mathf.Max(command.DelayAfter, commandIntervalSeconds));
 				continue;
 			}
@@ -403,10 +413,68 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			{
 				Debug.LogError(controllerName + "指令发送失败，已达到重试上限: " + command.Hex);
 				ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
-				commandQueue.Dequeue();
+				RemoveHeadCommand(command);
 			}
 			yield return new WaitForSecondsRealtime(0.3f);
 		}
+	}
+
+	private void RemoveSupersededPendingCommands(PendingCommand newest)
+	{
+		if (newest == null || string.IsNullOrEmpty(newest.CoalesceKey) || commandQueue.Count == 0)
+		{
+			return;
+		}
+
+		int count = commandQueue.Count;
+		for (int i = 0; i < count; i++)
+		{
+			PendingCommand pending = commandQueue.Dequeue();
+			if (pending != activeCommand && pending.CoalesceKey == newest.CoalesceKey)
+			{
+				ControlDiagnostics.RecordCommand(pending.CommandId, "TCP", "COMMAND_SUPERSEDED",
+					pending.TargetIp + ":" + port, "DROPPED", controllerName + " replaced_by=" + newest.CommandId + " " + pending.Hex);
+				continue;
+			}
+			commandQueue.Enqueue(pending);
+		}
+	}
+
+	private void RemoveHeadCommand(PendingCommand command)
+	{
+		if (commandQueue.Count > 0 && commandQueue.Peek() == command)
+		{
+			commandQueue.Dequeue();
+		}
+		if (activeCommand == command)
+		{
+			activeCommand = null;
+		}
+	}
+
+	private static string BuildCoalesceKey(string targetIp, int targetPort, byte[] data)
+	{
+		if (data == null || data.Length < 6)
+		{
+			return null;
+		}
+
+		byte functionCode = data[1];
+		int identityLength;
+		if (functionCode == 0x05)
+		{
+			identityLength = 4;
+		}
+		else if (functionCode == 0x0F || functionCode == 0x10)
+		{
+			identityLength = 6;
+		}
+		else
+		{
+			return null;
+		}
+
+		return (targetIp ?? string.Empty) + ":" + targetPort + ":" + BytesToHex(data, identityLength);
 	}
 
 	private void EnsureConnection()
