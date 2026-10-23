@@ -791,16 +791,12 @@ public class FirstPageEquipManager : MonoBehaviour
 
 	private IEnumerator ControlCLoseEquip(string ip)
 	{
-		EventCenter.BroadCast(Eventdefine.InitSocketIP_port, ip, "7006");
-		yield return new WaitForSeconds(1f);
-		EventCenter.BroadCast(Eventdefine.Shutdown);
+		yield return ReliableUdpCommandSender.Send("TRANSPARENT_CABINET_SHUTDOWN", ip, 7006, "shutdown");
 	}
 
 	private IEnumerator ControlOpenEquip(string code)
 	{
-		EventCenter.BroadCast(Eventdefine.InitSocketIP_port, "192.168.86.40", "7002");
-		yield return new WaitForSeconds(1f);
-		EventCenter.BroadCast(Eventdefine.OpenOLED, code);
+		yield return ReliableUdpCommandSender.Send("TRANSPARENT_CABINET_WAKE", "192.168.86.40", 7002, "Open" + code);
 	}
 
 	private IEnumerator XuTingLightOpen()

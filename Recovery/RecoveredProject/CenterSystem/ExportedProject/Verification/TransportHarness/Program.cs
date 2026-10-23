@@ -39,6 +39,7 @@ internal static class Program
 			("disconnect-and-reconnect", TestReconnect),
 			("application-suspend-and-resume", TestApplicationSuspendAndResume),
 			("modbus-acknowledgement-retry", TestModbusAcknowledgementRetry),
+			("reliable-udp-command-burst", TestReliableUdpCommandBurst),
 			("same-host-port-switch", TestPortSwitch),
 			("rapid-50-command-queue", TestRapidQueue),
 			("wol-magic-packet", TestWakeOnLanPacket)
@@ -154,6 +155,26 @@ internal static class Program
 
 		controller.Value.SendSingleCode("7E", "127.0.0.1");
 		AssertBytes(new byte[] { 0x7E }, await ReadWithPump(controller.Value, retryPeer, 1, 4000), "queue continues after device acknowledgement");
+	}
+
+	private static async Task TestReliableUdpCommandBurst()
+	{
+		using var receiver = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+		int port = ((IPEndPoint)receiver.Client.LocalEndPoint).Port;
+		System.Collections.IEnumerator routine = ReliableUdpCommandSender.Send(
+			"TEST_WAKE", "127.0.0.1", port, "Open3", 3, 0f, 0f);
+		while (routine.MoveNext())
+		{
+		}
+
+		string[] expected = { "hello", "Open3", "Open3", "Open3" };
+		using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+		for (int i = 0; i < expected.Length; i++)
+		{
+			UdpReceiveResult received = await receiver.ReceiveAsync(cancellation.Token);
+			string payload = System.Text.Encoding.ASCII.GetString(received.Buffer);
+			Assert(payload == expected[i], "UDP burst item " + i + " expected=" + expected[i] + " actual=" + payload);
+		}
 	}
 
 	private static async Task TestPortSwitch()
