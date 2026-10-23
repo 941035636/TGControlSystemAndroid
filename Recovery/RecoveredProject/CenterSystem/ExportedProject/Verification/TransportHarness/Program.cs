@@ -38,6 +38,7 @@ internal static class Program
 			("open-close-order", TestOpenCloseOrder),
 			("disconnect-and-reconnect", TestReconnect),
 			("application-suspend-and-resume", TestApplicationSuspendAndResume),
+			("modbus-acknowledgement-retry", TestModbusAcknowledgementRetry),
 			("same-host-port-switch", TestPortSwitch),
 			("rapid-50-command-queue", TestRapidQueue),
 			("wol-magic-packet", TestWakeOnLanPacket)
@@ -130,6 +131,29 @@ internal static class Program
 		controller.Value.SetSuspendedForTest(false);
 		using TcpClient resumedPeer = await PumpForResult(controller.Value, resumedAccept);
 		AssertBytes(new byte[] { 0x42 }, await ReadWithPump(controller.Value, resumedPeer, 1), "queued command after resume");
+	}
+
+	private static async Task TestModbusAcknowledgementRetry()
+	{
+		byte[] command = Convert.FromHexString("FE050000FF009835");
+		using var listener = StartListener(out int port);
+		using var controller = new ControllerScope();
+
+		Task<TcpClient> firstAccept = listener.AcceptTcpClientAsync();
+		controller.Value.Connect("127.0.0.1", port);
+		controller.Value.SendSingleCode("FE 05 00 00 FF 00 98 35", "127.0.0.1");
+		using (TcpClient firstPeer = await PumpForResult(controller.Value, firstAccept))
+		{
+			AssertBytes(command, await ReadWithPump(controller.Value, firstPeer, command.Length), "first Modbus attempt");
+		}
+
+		Task<TcpClient> retryAccept = listener.AcceptTcpClientAsync();
+		using TcpClient retryPeer = await PumpForResult(controller.Value, retryAccept, 4000);
+		AssertBytes(command, await ReadWithPump(controller.Value, retryPeer, command.Length, 4000), "retried Modbus command");
+		await retryPeer.GetStream().WriteAsync(command);
+
+		controller.Value.SendSingleCode("7E", "127.0.0.1");
+		AssertBytes(new byte[] { 0x7E }, await ReadWithPump(controller.Value, retryPeer, 1, 4000), "queue continues after device acknowledgement");
 	}
 
 	private static async Task TestPortSwitch()

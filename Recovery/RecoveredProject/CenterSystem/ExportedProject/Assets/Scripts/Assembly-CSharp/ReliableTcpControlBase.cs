@@ -29,9 +29,14 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 	[SerializeField]
 	private int maxSendAttempts = 3;
 
+	[SerializeField]
+	private float acknowledgementTimeoutSeconds = 0.8f;
+
 	private readonly object socketLock = new object();
 
 	private readonly Queue<PendingCommand> commandQueue = new Queue<PendingCommand>();
+
+	private readonly object acknowledgementLock = new object();
 
 	private Socket socket;
 
@@ -55,6 +60,8 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 
 	private Coroutine commandCoroutine;
 
+	private PendingAcknowledgement pendingAcknowledgement;
+
 	private Eventdefine connectEvent;
 
 	private Eventdefine sendEvent;
@@ -69,11 +76,34 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 
 		public string Hex;
 
+		public byte[] Data;
+
 		public string TargetIp;
 
 		public int Attempts;
 
 		public float DelayAfter;
+	}
+
+	private sealed class PendingAcknowledgement
+	{
+		public string CommandId;
+
+		public int Generation;
+
+		public byte[] ExpectedPrefix;
+
+		public byte UnitId;
+
+		public byte FunctionCode;
+
+		public readonly List<byte> Received = new List<byte>();
+
+		public volatile bool Completed;
+
+		public volatile bool Success;
+
+		public string Detail;
 	}
 
 	private sealed class ConnectionAttempt
@@ -224,9 +254,10 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			return;
 		}
 
+		byte[] commandData;
 		try
 		{
-			HexStringToBytes(message);
+			commandData = HexStringToBytes(message);
 		}
 		catch (Exception ex)
 		{
@@ -239,6 +270,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 		{
 			CommandId = commandId,
 			Hex = message,
+			Data = commandData,
 			TargetIp = string.IsNullOrWhiteSpace(targetIp) ? host : targetIp.Trim(),
 			DelayAfter = delayAfter
 		});
@@ -307,12 +339,50 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 				continue;
 			}
 
+			PendingAcknowledgement acknowledgement = BeginAcknowledgement(command);
 			ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "ATTEMPT", controllerName + " attempt=" + (command.Attempts + 1) + " " + command.Hex);
-			SendResult result = BeginSend(activeSocket, HexStringToBytes(command.Hex));
+			SendResult result = BeginSend(activeSocket, command.Data);
 			float sendStarted = Time.realtimeSinceStartup;
 			while (!result.Completed && Time.realtimeSinceStartup - sendStarted < Mathf.Max(0.5f, sendTimeoutSeconds))
 			{
 				yield return null;
+			}
+
+			if (result.Completed && result.Success && acknowledgement != null)
+			{
+				float acknowledgementStarted = Time.realtimeSinceStartup;
+				while (!acknowledgement.Completed &&
+					Time.realtimeSinceStartup - acknowledgementStarted < Mathf.Max(0.2f, acknowledgementTimeoutSeconds))
+				{
+					if (applicationSuspended)
+					{
+						acknowledgementStarted = Time.realtimeSinceStartup;
+					}
+					yield return null;
+				}
+
+				if (acknowledgement.Completed && acknowledgement.Success)
+				{
+					ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "DEVICE_ACK", command.TargetIp + ":" + port, "CONFIRMED", controllerName + " " + acknowledgement.Detail);
+					ClearAcknowledgement(acknowledgement);
+					commandQueue.Dequeue();
+					yield return new WaitForSecondsRealtime(Mathf.Max(command.DelayAfter, commandIntervalSeconds));
+					continue;
+				}
+
+				command.Attempts++;
+				string acknowledgementError = acknowledgement.Completed ? acknowledgement.Detail : "timeout";
+				ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "DEVICE_ACK", command.TargetIp + ":" + port, "RETRY", controllerName + " attempt=" + command.Attempts + " " + acknowledgementError);
+				ClearAcknowledgement(acknowledgement);
+				ResetConnection();
+				if (command.Attempts >= Mathf.Max(1, maxSendAttempts))
+				{
+					Debug.LogError(controllerName + " device acknowledgement failed after max attempts: " + command.Hex);
+					ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "DEVICE_ACK", command.TargetIp + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
+					commandQueue.Dequeue();
+				}
+				yield return new WaitForSecondsRealtime(0.3f);
+				continue;
 			}
 
 			if (result.Completed && result.Success)
@@ -325,6 +395,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			}
 
 			command.Attempts++;
+			ClearAcknowledgement(acknowledgement);
 			Debug.LogWarning(controllerName + "发送失败，准备重连重试: " + (result.Error ?? "发送超时"));
 			ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "RETRY", controllerName + " " + (result.Error ?? "timeout") + " " + command.Hex);
 			ResetConnection();
@@ -469,7 +540,8 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			}
 			string receivedHex = BytesToHex(state.Buffer, count);
 			Debug.Log(controllerName + "接收: " + receivedHex);
-			ControlDiagnostics.Record("TCP", "RECEIVE", connectedHost + ":" + connectedPort, "UNMATCHED", controllerName + " bytes=" + count + " raw=" + receivedHex);
+			bool matched = TryMatchAcknowledgement(state.Generation, state.Buffer, count);
+			ControlDiagnostics.Record("TCP", "RECEIVE", connectedHost + ":" + connectedPort, matched ? "MATCHED" : "UNMATCHED", controllerName + " bytes=" + count + " raw=" + receivedHex);
 			state.Socket.BeginReceive(state.Buffer, 0, state.Buffer.Length, SocketFlags.None, ReceiveCallback, state);
 		}
 		catch (Exception ex)
@@ -481,6 +553,122 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			}
 			InvalidateSocket(state.Socket, state.Generation);
 		}
+	}
+
+	private PendingAcknowledgement BeginAcknowledgement(PendingCommand command)
+	{
+		if (!RequiresModbusAcknowledgement(command.Data))
+		{
+			return null;
+		}
+
+		byte[] prefix = new byte[6];
+		Buffer.BlockCopy(command.Data, 0, prefix, 0, prefix.Length);
+		PendingAcknowledgement acknowledgement = new PendingAcknowledgement
+		{
+			CommandId = command.CommandId,
+			Generation = connectionGeneration,
+			ExpectedPrefix = prefix,
+			UnitId = command.Data[0],
+			FunctionCode = command.Data[1]
+		};
+		lock (acknowledgementLock)
+		{
+			pendingAcknowledgement = acknowledgement;
+		}
+		return acknowledgement;
+	}
+
+	private bool TryMatchAcknowledgement(int generation, byte[] data, int count)
+	{
+		lock (acknowledgementLock)
+		{
+			PendingAcknowledgement acknowledgement = pendingAcknowledgement;
+			if (acknowledgement == null || acknowledgement.Generation != generation || acknowledgement.Completed)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < count; i++)
+			{
+				acknowledgement.Received.Add(data[i]);
+			}
+			if (ContainsSequence(acknowledgement.Received, acknowledgement.ExpectedPrefix))
+			{
+				acknowledgement.Detail = "response=" + BytesToHex(acknowledgement.Received.ToArray(), acknowledgement.Received.Count);
+				acknowledgement.Success = true;
+				acknowledgement.Completed = true;
+				return true;
+			}
+
+			for (int i = 0; i + 2 < acknowledgement.Received.Count; i++)
+			{
+				if (acknowledgement.Received[i] == acknowledgement.UnitId &&
+					acknowledgement.Received[i + 1] == (byte)(acknowledgement.FunctionCode | 0x80))
+				{
+					acknowledgement.Detail = "modbus exception=0x" + acknowledgement.Received[i + 2].ToString("X2");
+					acknowledgement.Success = false;
+					acknowledgement.Completed = true;
+					return true;
+				}
+			}
+
+			if (acknowledgement.Received.Count > 4096)
+			{
+				acknowledgement.Received.RemoveRange(0, acknowledgement.Received.Count - 4096);
+			}
+			return false;
+		}
+	}
+
+	private void ClearAcknowledgement(PendingAcknowledgement acknowledgement)
+	{
+		if (acknowledgement == null)
+		{
+			return;
+		}
+		lock (acknowledgementLock)
+		{
+			if (pendingAcknowledgement == acknowledgement)
+			{
+				pendingAcknowledgement = null;
+			}
+		}
+	}
+
+	private static bool RequiresModbusAcknowledgement(byte[] data)
+	{
+		if (data == null || data.Length < 8)
+		{
+			return false;
+		}
+		byte functionCode = data[1];
+		return functionCode == 0x05 || functionCode == 0x0F || functionCode == 0x10;
+	}
+
+	private static bool ContainsSequence(List<byte> source, byte[] expected)
+	{
+		if (source == null || expected == null || expected.Length == 0 || source.Count < expected.Length)
+		{
+			return false;
+		}
+		for (int start = 0; start <= source.Count - expected.Length; start++)
+		{
+			bool matched = true;
+			for (int i = 0; i < expected.Length; i++)
+			{
+				if (source[start + i] != expected[i])
+				{
+					matched = false;
+					break;
+				}
+			}
+			if (matched)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private SendResult BeginSend(Socket sendSocket, byte[] data)
