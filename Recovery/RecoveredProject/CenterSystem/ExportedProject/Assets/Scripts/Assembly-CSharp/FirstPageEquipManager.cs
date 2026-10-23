@@ -231,6 +231,10 @@ public class FirstPageEquipManager : MonoBehaviour
 
 	private Toggle activeLightBatchToggle;
 
+	private readonly Dictionary<Toggle, bool> equipBatchInteractableStates = new Dictionary<Toggle, bool>();
+
+	private readonly Dictionary<Toggle, bool> lightBatchInteractableStates = new Dictionary<Toggle, bool>();
+
 	public EquipArr EquipModeList;
 
 	private IEnumerator RelayConnectTCP()
@@ -1172,6 +1176,32 @@ public class FirstPageEquipManager : MonoBehaviour
 	{
 	}
 
+	private void OnDisable()
+	{
+		if (equipBatchCoroutine != null)
+		{
+			StopCoroutine(equipBatchCoroutine);
+			equipBatchCoroutine = null;
+		}
+		if (lightBatchCoroutine != null)
+		{
+			StopCoroutine(lightBatchCoroutine);
+			lightBatchCoroutine = null;
+		}
+		if (activeEquipBatchToggle != null)
+		{
+			activeEquipBatchToggle.SetIsOnWithoutNotify(false);
+			activeEquipBatchToggle = null;
+		}
+		if (activeLightBatchToggle != null)
+		{
+			activeLightBatchToggle.SetIsOnWithoutNotify(false);
+			activeLightBatchToggle = null;
+		}
+		RestoreBatchControls(equipBatchInteractableStates);
+		RestoreBatchControls(lightBatchInteractableStates);
+	}
+
 	private static void AttachToggleDiagnostics(Toggle[] toggles, string action)
 	{
 		if (toggles == null)
@@ -1195,30 +1225,56 @@ public class FirstPageEquipManager : MonoBehaviour
 
 	private void StartEquipBatch(Toggle[] toggles, Toggle batchToggle)
 	{
-		ControlDiagnostics.Record("BATCH", "EQUIPMENT_START", batchToggle == null ? string.Empty : batchToggle.name, "STARTED", "count=" + (toggles == null ? 0 : toggles.Length));
+		if (toggles == null || toggles.Length == 0)
+		{
+			Debug.LogWarning("Equipment batch has no controls to execute");
+			ControlDiagnostics.Record("BATCH", "EQUIPMENT_START", batchToggle == null ? string.Empty : batchToggle.name, "EMPTY", string.Empty);
+			if (batchToggle != null)
+			{
+				batchToggle.SetIsOnWithoutNotify(false);
+			}
+			return;
+		}
 		if (equipBatchCoroutine != null)
 		{
-			StopCoroutine(equipBatchCoroutine);
-			if (activeEquipBatchToggle != null)
+			Debug.LogWarning("Equipment batch command ignored because another equipment batch is still running");
+			ControlDiagnostics.Record("BATCH", "EQUIPMENT_START", batchToggle == null ? string.Empty : batchToggle.name, "BUSY", "active=" + (activeEquipBatchToggle == null ? string.Empty : activeEquipBatchToggle.name));
+			if (batchToggle != null && batchToggle != activeEquipBatchToggle)
 			{
-				activeEquipBatchToggle.SetIsOnWithoutNotify(false);
+				batchToggle.SetIsOnWithoutNotify(false);
 			}
+			return;
 		}
+		ControlDiagnostics.Record("BATCH", "EQUIPMENT_START", batchToggle == null ? string.Empty : batchToggle.name, "STARTED", "count=" + (toggles == null ? 0 : toggles.Length));
+		LockBatchControls(true);
 		activeEquipBatchToggle = batchToggle;
 		equipBatchCoroutine = StartCoroutine(RunToggleBatch(toggles, batchToggle, true));
 	}
 
 	private void StartLightBatch(Toggle[] toggles, Toggle batchToggle)
 	{
-		ControlDiagnostics.Record("BATCH", "LIGHT_START", batchToggle == null ? string.Empty : batchToggle.name, "STARTED", "count=" + (toggles == null ? 0 : toggles.Length));
+		if (toggles == null || toggles.Length == 0)
+		{
+			Debug.LogWarning("Light batch has no controls to execute");
+			ControlDiagnostics.Record("BATCH", "LIGHT_START", batchToggle == null ? string.Empty : batchToggle.name, "EMPTY", string.Empty);
+			if (batchToggle != null)
+			{
+				batchToggle.SetIsOnWithoutNotify(false);
+			}
+			return;
+		}
 		if (lightBatchCoroutine != null)
 		{
-			StopCoroutine(lightBatchCoroutine);
-			if (activeLightBatchToggle != null)
+			Debug.LogWarning("Light batch command ignored because another light batch is still running");
+			ControlDiagnostics.Record("BATCH", "LIGHT_START", batchToggle == null ? string.Empty : batchToggle.name, "BUSY", "active=" + (activeLightBatchToggle == null ? string.Empty : activeLightBatchToggle.name));
+			if (batchToggle != null && batchToggle != activeLightBatchToggle)
 			{
-				activeLightBatchToggle.SetIsOnWithoutNotify(false);
+				batchToggle.SetIsOnWithoutNotify(false);
 			}
+			return;
 		}
+		ControlDiagnostics.Record("BATCH", "LIGHT_START", batchToggle == null ? string.Empty : batchToggle.name, "STARTED", "count=" + (toggles == null ? 0 : toggles.Length));
+		LockBatchControls(false);
 		activeLightBatchToggle = batchToggle;
 		lightBatchCoroutine = StartCoroutine(RunToggleBatch(toggles, batchToggle, false));
 	}
@@ -1235,7 +1291,7 @@ public class FirstPageEquipManager : MonoBehaviour
 		for (int i = 0; i < toggles.Length; i++)
 		{
 			Toggle target = toggles[i];
-			if (target == null || !target.gameObject.activeInHierarchy || !target.interactable)
+			if (target == null || !target.gameObject.activeInHierarchy)
 			{
 				continue;
 			}
@@ -1260,14 +1316,70 @@ public class FirstPageEquipManager : MonoBehaviour
 		}
 		if (isEquipmentBatch)
 		{
+			RestoreBatchControls(equipBatchInteractableStates);
 			equipBatchCoroutine = null;
 			activeEquipBatchToggle = null;
 		}
 		else
 		{
+			RestoreBatchControls(lightBatchInteractableStates);
 			lightBatchCoroutine = null;
 			activeLightBatchToggle = null;
 		}
+	}
+
+	private void LockBatchControls(bool isEquipmentBatch)
+	{
+		Dictionary<Toggle, bool> states = isEquipmentBatch ? equipBatchInteractableStates : lightBatchInteractableStates;
+		states.Clear();
+		if (isEquipmentBatch)
+		{
+			RememberAndDisable(TogArrEquip, states);
+			RememberAndDisable(TogArrEquipClose, states);
+			RememberAndDisable(AllEquipOpenTog, states);
+			RememberAndDisable(AllEquipCloseTog, states);
+		}
+		else
+		{
+			RememberAndDisable(TogArrLightOpen, states);
+			RememberAndDisable(TogArrLightClose, states);
+			RememberAndDisable(AllLightOpenTog, states);
+			RememberAndDisable(AllLightCloseTog, states);
+		}
+	}
+
+	private static void RememberAndDisable(Toggle[] toggles, Dictionary<Toggle, bool> states)
+	{
+		if (toggles == null)
+		{
+			return;
+		}
+		for (int i = 0; i < toggles.Length; i++)
+		{
+			RememberAndDisable(toggles[i], states);
+		}
+	}
+
+	private static void RememberAndDisable(Toggle toggle, Dictionary<Toggle, bool> states)
+	{
+		if (toggle == null || states.ContainsKey(toggle))
+		{
+			return;
+		}
+		states.Add(toggle, toggle.interactable);
+		toggle.interactable = false;
+	}
+
+	private static void RestoreBatchControls(Dictionary<Toggle, bool> states)
+	{
+		foreach (KeyValuePair<Toggle, bool> state in states)
+		{
+			if (state.Key != null)
+			{
+				state.Key.interactable = state.Value;
+			}
+		}
+		states.Clear();
 	}
 
 	private IEnumerator StartAllRelayOpen()
