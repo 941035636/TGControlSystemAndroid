@@ -232,6 +232,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 		}
 
 		ControlDiagnostics.Record("TCP", "APPLICATION_RESUME", host + ":" + port, "RECONNECTING", controllerName + " queued=" + commandQueue.Count);
+		ControlDiagnostics.PublishStatus("应用已恢复，正在重连设备控制器", false);
 		EnsureConnection();
 	}
 
@@ -284,6 +285,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 		RemoveSupersededPendingCommands(pendingCommand);
 		commandQueue.Enqueue(pendingCommand);
 		ControlDiagnostics.RecordCommand(commandId, "TCP", "COMMAND_QUEUE", resolvedTargetIp + ":" + port, "QUEUED", controllerName + " " + message);
+		ControlDiagnostics.PublishStatus("控制命令已排队：" + controllerName, false);
 
 		if (string.IsNullOrWhiteSpace(host) && !string.IsNullOrWhiteSpace(targetIp))
 		{
@@ -328,6 +330,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 					{
 						Debug.LogError(controllerName + "指令发送失败，已达到重试上限: " + command.Hex);
 						ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "CONNECT", host + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
+						ControlDiagnostics.PublishStatus("控制失败：" + controllerName + " 无法连接 " + host + ":" + port, true);
 						RemoveHeadCommand(command);
 						break;
 					}
@@ -374,6 +377,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 				if (acknowledgement.Completed && acknowledgement.Success)
 				{
 					ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "DEVICE_ACK", command.TargetIp + ":" + port, "CONFIRMED", controllerName + " " + acknowledgement.Detail);
+					ControlDiagnostics.PublishStatus("控制器已确认：" + controllerName + "（不代表终端设备物理状态）", false);
 					ClearAcknowledgement(acknowledgement);
 					RemoveHeadCommand(command);
 					yield return new WaitForSecondsRealtime(Mathf.Max(command.DelayAfter, commandIntervalSeconds));
@@ -389,6 +393,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 				{
 					Debug.LogError(controllerName + " device acknowledgement failed after max attempts: " + command.Hex);
 					ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "DEVICE_ACK", command.TargetIp + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
+					ControlDiagnostics.PublishStatus("控制失败：" + controllerName + " 未返回确认", true);
 					RemoveHeadCommand(command);
 				}
 				yield return new WaitForSecondsRealtime(0.3f);
@@ -399,6 +404,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			{
 				Debug.Log(controllerName + "发送成功 IP:" + command.TargetIp + " 指令:" + command.Hex);
 				ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "SOCKET_OK", controllerName + " bytes accepted by socket " + command.Hex);
+				ControlDiagnostics.PublishStatus("命令已发送：" + controllerName + "（该协议无设备状态确认）", false);
 				RemoveHeadCommand(command);
 				yield return new WaitForSecondsRealtime(Mathf.Max(command.DelayAfter, commandIntervalSeconds));
 				continue;
@@ -413,6 +419,7 @@ public abstract class ReliableTcpControlBase : MonoBehaviour
 			{
 				Debug.LogError(controllerName + "指令发送失败，已达到重试上限: " + command.Hex);
 				ControlDiagnostics.RecordCommand(command.CommandId, "TCP", "COMMAND_SEND", command.TargetIp + ":" + port, "FAILED", controllerName + " max attempts " + command.Hex);
+				ControlDiagnostics.PublishStatus("控制失败：" + controllerName + " 发送重试已用尽", true);
 				RemoveHeadCommand(command);
 			}
 			yield return new WaitForSecondsRealtime(0.3f);

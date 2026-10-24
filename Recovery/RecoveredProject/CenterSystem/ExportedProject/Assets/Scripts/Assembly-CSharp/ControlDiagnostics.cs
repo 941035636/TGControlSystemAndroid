@@ -11,11 +11,19 @@ public static class ControlDiagnostics
 
 	private static readonly Queue<string> PendingLines = new Queue<string>();
 
+	private static readonly object StatusLock = new object();
+
 	private static string logPath;
 
 	private static string sessionId = string.Empty;
 
 	private static long sequence;
+
+	private static long latestStatusVersion;
+
+	private static string latestStatusText = string.Empty;
+
+	private static bool latestStatusIsError;
 
 	private static readonly System.Diagnostics.Stopwatch SessionClock = new System.Diagnostics.Stopwatch();
 
@@ -30,6 +38,9 @@ public static class ControlDiagnostics
 	{
 		sessionId = DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N").Substring(0, 8);
 		sequence = 0L;
+		latestStatusVersion = 0L;
+		latestStatusText = string.Empty;
+		latestStatusIsError = false;
 		SessionClock.Restart();
 		string folder = Path.Combine(Application.persistentDataPath, "ControlDiagnostics");
 		Directory.CreateDirectory(folder);
@@ -48,6 +59,37 @@ public static class ControlDiagnostics
 	public static void Record(string category, string action, string target, string result, string detail)
 	{
 		RecordCommand(string.Empty, category, action, target, result, detail);
+	}
+
+	public static void PublishStatus(string message, bool isError)
+	{
+		if (string.IsNullOrWhiteSpace(message))
+		{
+			return;
+		}
+		lock (StatusLock)
+		{
+			latestStatusVersion++;
+			latestStatusText = DateTime.Now.ToString("HH:mm:ss") + "  " + message.Trim();
+			latestStatusIsError = isError;
+		}
+	}
+
+	public static bool TryGetLatestStatus(ref long observedVersion, out string message, out bool isError)
+	{
+		lock (StatusLock)
+		{
+			if (observedVersion == latestStatusVersion || string.IsNullOrEmpty(latestStatusText))
+			{
+				message = string.Empty;
+				isError = false;
+				return false;
+			}
+			observedVersion = latestStatusVersion;
+			message = latestStatusText;
+			isError = latestStatusIsError;
+			return true;
+		}
 	}
 
 	public static string NewCommandId(string protocol)

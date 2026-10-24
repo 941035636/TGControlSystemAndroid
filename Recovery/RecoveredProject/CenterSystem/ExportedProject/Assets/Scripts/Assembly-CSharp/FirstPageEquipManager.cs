@@ -237,6 +237,8 @@ public class FirstPageEquipManager : MonoBehaviour
 
 	private readonly Dictionary<string, int> transparentCabinetCommandVersions = new Dictionary<string, int>();
 
+	private long observedControlStatusVersion;
+
 	public EquipArr EquipModeList;
 
 	private IEnumerator RelayConnectTCP()
@@ -1055,6 +1057,7 @@ public class FirstPageEquipManager : MonoBehaviour
 
 	private void Update()
 	{
+		RefreshControlStatusText();
 		if (Input.GetKeyDown(KeyCode.Q))
 		{
 			EventCenter.BroadCast(Eventdefine.TcpSendSingle90, RedModelList[0].GetOrder.Open1, RedModelList[0].GetredIp);
@@ -1139,6 +1142,16 @@ public class FirstPageEquipManager : MonoBehaviour
 		string path = Path.Combine(Application.streamingAssetsPath, fileName);
 		return JsonConvert.DeserializeObject<EquipArr>(File.ReadAllText(path));
 	#endif
+	}
+
+	private void RefreshControlStatusText()
+	{
+		string statusText;
+		bool isError;
+		if (receiverTxt != null && ControlDiagnostics.TryGetLatestStatus(ref observedControlStatusVersion, out statusText, out isError))
+		{
+			receiverTxt.text = (isError ? "[异常] " : string.Empty) + statusText;
+		}
 	}
 
 	public List<RelayModel> GetRelayItemList()

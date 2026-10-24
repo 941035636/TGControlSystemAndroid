@@ -149,6 +149,8 @@ public static class ControlDiagnostics
 {
 	private static int nextCommandId;
 
+	public static readonly List<string> Statuses = new List<string>();
+
 	public static string NewCommandId(string protocol)
 	{
 		nextCommandId++;
@@ -161,5 +163,13 @@ public static class ControlDiagnostics
 
 	public static void RecordCommand(string commandId, string category, string action, string target, string result, string detail)
 	{
+	}
+
+	public static void PublishStatus(string message, bool isError)
+	{
+		lock (Statuses)
+		{
+			Statuses.Add((isError ? "ERROR " : "INFO ") + message);
+		}
 	}
 }

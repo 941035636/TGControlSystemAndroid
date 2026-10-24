@@ -157,6 +157,7 @@ internal static class Program
 
 		controller.Value.SendSingleCode("7E", "127.0.0.1");
 		AssertBytes(new byte[] { 0x7E }, await ReadWithPump(controller.Value, retryPeer, 1, 4000), "queue continues after device acknowledgement");
+		Assert(ControlDiagnostics.Statuses.Any(status => status.Contains("控制器已确认")), "confirmed Modbus response should publish operator status");
 	}
 
 	private static async Task TestReliableUdpCommandBurst()
@@ -177,6 +178,7 @@ internal static class Program
 			string payload = System.Text.Encoding.ASCII.GetString(received.Buffer);
 			Assert(payload == expected[i], "UDP burst item " + i + " expected=" + expected[i] + " actual=" + payload);
 		}
+		Assert(ControlDiagnostics.Statuses.Any(status => status.Contains("UDP 命令已发送")), "UDP completion should publish operator status");
 	}
 
 	private static async Task TestModbusLatestPendingCommandWins()

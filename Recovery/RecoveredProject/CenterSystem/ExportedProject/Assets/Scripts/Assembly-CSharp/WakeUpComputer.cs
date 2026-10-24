@@ -47,6 +47,7 @@ public class WakeUpComputer : MonoBehaviour
 			!IPAddress.TryParse(directedBroadcastAddress.Trim(), out configuredBroadcast))
 		{
 			UnityEngine.Debug.LogError("网络唤醒广播地址无效: " + directedBroadcastAddress);
+			ControlDiagnostics.PublishStatus("网络唤醒失败：广播地址无效", true);
 			return;
 		}
 
@@ -64,6 +65,7 @@ public class WakeUpComputer : MonoBehaviour
 		{
 			UnityEngine.Debug.LogError("网络唤醒 MAC 地址格式无效: " + mac);
 			ControlDiagnostics.RecordCommand(commandId, "WOL", "MAGIC_PACKET", mac, "INVALID", "MAC format");
+			ControlDiagnostics.PublishStatus("网络唤醒失败：MAC 地址无效", true);
 			return false;
 		}
 
@@ -104,6 +106,9 @@ public class WakeUpComputer : MonoBehaviour
 			UnityEngine.Debug.Log("网络唤醒魔术包已发送，MAC=" + mac + " 广播目标=" + string.Join(",", destinations));
 		}
 		ControlDiagnostics.RecordCommand(commandId, "WOL", "MAGIC_PACKET", mac, sentAny ? "COMPLETED" : "FAILED", "socket send result only");
+		ControlDiagnostics.PublishStatus(sentAny
+			? "网络唤醒包已发送（请观察设备是否启动）"
+			: "网络唤醒失败：广播包未能发送", !sentAny);
 		return sentAny;
 	}
 

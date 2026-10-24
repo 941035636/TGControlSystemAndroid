@@ -15,6 +15,7 @@ public static class ReliableUdpCommandSender
 		if (string.IsNullOrWhiteSpace(targetIp) || targetPort <= 0 || targetPort > 65535 || string.IsNullOrEmpty(payload))
 		{
 			ControlDiagnostics.RecordCommand(commandId, "UDP_RELIABLE", operation, targetIp + ":" + targetPort, "INVALID", "payload=" + payload);
+			ControlDiagnostics.PublishStatus("控制失败：UDP 目标或指令无效", true);
 			yield break;
 		}
 
@@ -27,6 +28,7 @@ public static class ReliableUdpCommandSender
 		{
 			Debug.LogError("UDP target is invalid: " + targetIp + ":" + targetPort + " " + ex.Message);
 			ControlDiagnostics.RecordCommand(commandId, "UDP_RELIABLE", operation, targetIp + ":" + targetPort, "INVALID", ex.Message);
+			ControlDiagnostics.PublishStatus("控制失败：UDP 地址无效 " + targetIp + ":" + targetPort, true);
 			yield break;
 		}
 
@@ -65,6 +67,9 @@ public static class ReliableUdpCommandSender
 		ControlDiagnostics.RecordCommand(commandId, "UDP_RELIABLE", operation, endpoint.ToString(),
 			successfulSends > 0 ? "COMPLETED" : "FAILED",
 			"socket_successes=" + successfulSends + "/" + totalAttempts + " payload=" + payload);
+		ControlDiagnostics.PublishStatus(successfulSends > 0
+			? "UDP 命令已发送：" + operation + "（该协议无设备状态确认）"
+			: "控制失败：UDP 命令未能发送 " + operation, successfulSends == 0);
 	}
 
 	private static bool TrySend(Socket sender, EndPoint endpoint, string payload, string commandId, string operation, int attempt)
